@@ -67,6 +67,9 @@ h1 {
     justify-content: center;
     gap: 10px;
     margin-top: 10px;
+    border: 2px solid #0c1bf9;
+    padding: 10px;
+    border-radius: 10px;
 }
 
 .nav-btn {
@@ -87,7 +90,11 @@ h1 {
     background-color: #95a5a6;
     cursor: not-allowed;
 }
-
+#imageCounter {
+    display: flex;
+    align-items: center;
+    font-weight: bold;
+}
 .map-container {
     height: 500px;
     border-radius: 8px;
@@ -97,9 +104,15 @@ h1 {
 }
 
 .guess-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+        display: flex;
+        justify-content: space-evenly;
+        align-items: center;
+        border: 2px solid #0c1bf9;
+        border-radius: 10px;
+}
+.guess-controls p{ 
+    font-weight: bold;
+    color:rgb(11, 116, 20);
 }
 
 .score-display,
@@ -112,18 +125,19 @@ h1 {
 }
 
 .guess-btn {
-    background-color: #27ae60;
+    background-color: #fa092b;
     color: white;
     border: none;
-    padding: 10px 20px;
+    padding: 10px 30px;
     border-radius: 4px;
+    font-weight: bold;
     cursor: pointer;
     font-size: 1.1em;
     transition: background-color 0.3s;
 }
 
 .guess-btn:hover {
-    background-color: #219653;
+    background-color: #500a13;
 }
 
 .guess-btn:disabled {
@@ -147,7 +161,7 @@ h1 {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
+    background: transparent;
     z-index: 1000;
     justify-content: center;
     align-items: center;
@@ -155,13 +169,14 @@ h1 {
 
 .result-content {
     background-color: white;
-    padding: 30px;
+    padding: 20px;
     border-radius: 8px;
     max-width: 600px;
     text-align: center;
     display: block;
     margin: 0 auto;
     justify-content: center;
+    border: 4px solid rgb(123, 119, 119);
 }
 
 .result-distance {
