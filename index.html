@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      Wiki Guessr - A Geographic location Guessr Game with Wikidata and
+      Wikimedia Commons
+    </title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="style.css"
+    />
+    
+  </head>
+
+  <body>
+    <header>
+      <div class="container">
+        <h1>🌍 Wiki Guessr - Guess the geolocation based on images</h1>
+      </div>
+    </header>
+
+    <div class="container">
+      <div class="game-info">
+        <div class="round-display" id="roundDisplay">Round: 1</div>
+        <div class="score-display" id="scoreDisplay">Score: 0</div>
+      </div>
+
+      <div id="progressContainer">
+        <div class="progress-container">
+          <div id="progressBar" class="progress-bar"></div>
+        </div>
+      </div>
+
+      <div class="game-area">
+        <div class="image-container" id="imageContainer">
+          <div class="loading">
+            <i class="fas fa-spinner loading-spinner"></i> Loading game...
+          </div>
+        </div>
+
+        <div class="image-nav">
+          <button class="nav-btn" id="prevBtn">
+            <i class="fas fa-arrow-left"></i> Previous
+          </button>
+          <span id="imageCounter">1 / 1</span>
+          <button class="nav-btn" id="nextBtn">
+            Next <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
+
+        <div class="map-container" id="map"></div>
+
+        <div class="guess-controls">
+          <p>Click on the map to mark your guess.</p>
+          <button class="guess-btn" id="guessBtn" disabled>Make Guess</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-modal" id="resultModal">
+      <div class="result-content">
+        <h2>Your Guess</h2>
+        <div class="result-distance" id="resultDistance"></div>
+        <div class="result-score" id="resultScore"></div>
+        <p id="resultMessage"></p>
+        <button class="next-round-btn" id="nextRoundBtn">Next Round</button>
+      </div>
+    </div>
+    <footer class="game-footer">
+      <div class="footer-content">
+        <div class="footer-section">
+          <p>
+            🌍 Wiki Guessr - Guess the geolocation based on images from
+            Wikimedia Commons, Data from Wikidata and maps from OpenStreetMap.
+          </p>
+          <p>
+            Heavily inspired from
+            <a
+              class="footer-link"
+              href="https://github.com/blinry/wikidata-guessr"
+              >guessr</a
+            >
+            game created by
+            <a class="footer-link" href="https://github.com/blinry">binry</a>.
+            And that is based on
+            <a
+              class="footer-link"
+              href="https://github.com/webdevbrian/whereami"
+              >whereami</a
+            >, a GeoGuessr reimplementation by Brian Kinney.
+          </p>
+        </div>
+
+        <div class="footer-section">
+          <h4>Links</h4>
+          <ul class="footer-links">
+            <li>
+              <a
+                href="https://github.com/ranjithsiji/wikidataguessr"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <i class="fab fa-gitlab"></i> Source Code
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://guessr.blinry.org/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <i class="fas fa-link"></i> guessr game
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://commons.wikimedia.org"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <i class="fab fa-wikipedia-w"></i> Wikimedia Commons
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://www.wikidata.org/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <i class="fas fa-database"></i> Wikidata
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://www.openstreetmap.org/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <i class="fas fa-database"></i> Openstreetmap
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div class="footer-section">
+          <h4>License</h4>
+          <p>
+            All the images are displayed from
+            <a class="footer-link" href="https://commons.wikimedia.org"
+              >Wikimedia Commons</a
+            >
+            and licensed in Creative commons license.
+          </p>
+        </div>
+
+        <div class="footer-section">
+          <h4>Coded By Ranjithsiji</h4>
+          <p>
+            <a
+              class="footer-link"
+              href="https://w.wiki/tN"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <i class="fas fa-user"></i> Meta wiki
+            </a>
+          </p>
+          <p>
+            <a
+              class="footer-link"
+              href="https://github.com/ranjithsiji"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <i class="fas fa-user"></i> github
+            </a>
+          </p>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>
+          Supported by
+          <a class="footer-link" href="https://w.wiki/t9"
+            >Wikimedians of Kerala User Group</a
+          >| Not affiliated with GeoGuessr
+        </p>
+      </div>
+    </footer>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="game.js"></script>
+  </body>
+</html>

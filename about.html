@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About WikidataGuessr</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="about.css">
+    
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <h1>🌍 Wiki Guessr - Guess the geolocation based on images</h1>
+        </div>
+    </header>
+    <div class="container">
+        <div class="content-section">
+            <h2>Game Overview</h2>
+            <p>WikidataGuessr is a GeoGuessr-inspired game that challenges players to identify locations based on images
+                from Wikimedia Commons and geographic data from Wikidata. Unlike commercial alternatives, this game is
+                completely open-source and uses freely available data from the Wikimedia ecosystem.</p>
+
+            <div class="feature-list">
+                <div class="feature-card">
+                    <h3><i class="fas fa-globe-americas"></i> Real Locations</h3>
+                    <p>Explore thousands of real-world locations with images from Wikimedia Commons contributors around
+                        the
+                        world.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><i class="fas fa-map-marked-alt"></i> Interactive Map</h3>
+                    <p>Make your guesses using an interactive OpenStreetMap interface with precise distance measurement.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <h3><i class="fas fa-images"></i> Multiple Images</h3>
+                    <p>View multiple images per location with a slideshow interface to get different perspectives.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><i class="fas fa-trophy"></i> Scoring System</h3>
+                    <p>Earn points based on how close your guess is to the actual location, with exponential scoring.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <h3><i class="fas fa-database"></i> Open Data</h3>
+                    <p>All data comes from open sources - Wikidata for locations and Wikimedia Commons for images.</p>
+                </div>
+                <div class="feature-card">
+                    <h3><i class="fas fa-code"></i> Open Source</h3>
+                    <p>The complete source code is available on GitHub for anyone to use or modify.</p>
+                </div>
+            </div>
+
+            <a href="index.html" class="btn"><i class="fas fa-gamepad"></i> Play Now</a>
+            <a href="https://github.com/yourusername/wikidataguessr" class="btn" target="_blank"><i
+                    class="fab fa-github"></i> View Source</a>
+        </div>
+
+        <div class="content-section">
+            <h2>How to Play</h2>
+            <ol>
+                <li><strong>Start a Round:</strong> The game will show you images from a random location</li>
+                <li><strong>Explore Images:</strong> Use the navigation buttons to see all available images</li>
+                <li><strong>Make Your Guess:</strong> Click anywhere on the map to place your marker</li>
+                <li><strong>Submit Guess:</strong> Click "Make Guess" to see how close you were</li>
+                <li><strong>See Results:</strong> View the actual location and your distance from it</li>
+                <li><strong>Next Round:</strong> Continue to the next location and improve your score</li>
+            </ol>
+
+            <h3>Scoring System</h3>
+            <p>Your score for each round is calculated based on the distance between your guess and the actual location:
+            </p>
+            <ul>
+                <li><strong>Perfect guess</strong> (within 1km): 5000 points</li>
+                <li><strong>Excellent guess</strong> (within 10km): 4000-5000 points</li>
+                <li><strong>Good guess</strong> (within 100km): 2000-4000 points</li>
+                <li><strong>Fair guess</strong> (within 500km): 500-2000 points</li>
+                <li><strong>Poor guess</strong> (further than 500km): 0-500 points</li>
+            </ul>
+        </div>
+
+        <div class="content-section">
+            <h2>Technical Details</h2>
+            <h3>Technology Stack</h3>
+            <div class="tech-stack">
+                <span class="tech-item">HTML5</span>
+                <span class="tech-item">CSS3</span>
+                <span class="tech-item">JavaScript</span>
+                <span class="tech-item">jQuery</span>
+                <span class="tech-item">Leaflet.js</span>
+                <span class="tech-item">Wikidata API</span>
+                <span class="tech-item">Wikimedia Commons API</span>
+                <span class="tech-item">Font Awesome</span>
+            </div>
+
+            <h3>Data Sources</h3>
+            <p>The game uses two main Wikimedia projects as data sources:</p>
+            <ul>
+                <li><strong>Wikidata:</strong> For geographic coordinates and location information</li>
+                <li><strong>Wikimedia Commons:</strong> For images of the locations</li>
+            </ul>
+
+            <h3>API Usage</h3>
+            <p>The game makes the following API calls:</p>
+            <ul>
+                <li><strong>Wikidata Query Service:</strong> SPARQL queries to find random locations with images</li>
+                <li><strong>Wikimedia Commons API:</strong> Geosearch to find images near the selected coordinates</li>
+                <li><strong>OpenStreetMap:</strong> Tile server for the interactive map</li>
+            </ul>
+        </div>
+
+        <div class="content-section">
+            <h2>Development</h2>
+            <h3>Source Code</h3>
+            <p>The complete source code is available on GitHub under the MIT License. You're free to:</p>
+            <ul>
+                <li>Use the code as-is to host your own instance</li>
+                <li>Modify and extend the functionality</li>
+                <li>Contribute improvements back to the project</li>
+            </ul>
+
+            <a href="https://github.com/yourusername/wikidataguessr" class="btn" target="_blank"><i
+                    class="fab fa-github"></i> View on GitHub</a>
+
+            <h3>License</h3>
+            <p>WikidataGuessr is open-source software released under the <a href="https://opensource.org/licenses/MIT"
+                    target="_blank">MIT License</a>. The game content (images and location data) is available under
+                Creative
+                Commons licenses as specified by the original contributors on Wikimedia Commons and Wikidata.</p>
+
+            <h3>Contributing</h3>
+            <p>We welcome contributions from the community. To contribute:</p>
+            <ol>
+                <li>Fork the repository on GitHub</li>
+                <li>Create a new branch for your feature or bugfix</li>
+                <li>Submit a pull request with your changes</li>
+            </ol>
+        </div>
+
+        <div class="content-section">
+            <h2>Frequently Asked Questions</h2>
+
+            <h3>Why are some locations not very recognizable?</h3>
+            <p>The game uses completely random locations from Wikidata that have geographic coordinates and at least one
+                image. Some locations might be less recognizable than others - that's part of the challenge!</p>
+
+            <h3>Can I suggest improvements or report bugs?</h3>
+            <p>Yes! Please open an issue on the GitHub repository with your suggestion or bug report.</p>
+
+            <h3>Is there a mobile app version?</h3>
+            <p>Currently WikidataGuessr is web-only, but the responsive design works well on mobile browsers. An app
+                version
+                may be developed in the future.</p>
+
+            <h3>How often is new content added?</h3>
+            <p>The game doesn't have a fixed content set - it dynamically queries Wikidata and Wikimedia Commons, so new
+                content becomes available as it's added to those platforms.</p>
+        </div>
+    </div>
+    <footer class="game-footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <p>🌍 Wiki Guessr - Guess the geolocation based on images from Wikimedia Commons, Data from Wikidata and
+                    maps from OpenStreetMap.
+                </p>
+                <p>Heavily inspired from <a class="footer-link"
+                        href="https://github.com/blinry/wikidata-guessr">guessr</a>
+                    game created by <a class="footer-link" href="https://github.com/blinry">binry</a>. And that is based
+                    on
+                    <a class="footer-link" href="https://github.com/webdevbrian/whereami">whereami</a>, a GeoGuessr
+                    reimplementation by Brian Kinney.
+                </p>
+            </div>
+
+            <div class="footer-section">
+                <h4>Links</h4>
+                <ul class="footer-links">
+                    <li><a href="https://github.com/ranjithsiji/wikidataguessr" target="_blank"
+                            rel="noopener noreferrer">
+                            <i class="fab fa-gitlab"></i> Source Code
+                        </a></li>
+                    <li><a href="https://guessr.blinry.org/" target="_blank" rel="noopener noreferrer">
+                            <i class="fas fa-link"></i> guessr game
+                        </a></li>
+                    <li><a href="https://commons.wikimedia.org" target="_blank" rel="noopener noreferrer">
+                            <i class="fab fa-wikipedia-w"></i> Wikimedia Commons
+                        </a></li>
+                    <li><a href="https://www.wikidata.org/" target="_blank" rel="noopener noreferrer">
+                            <i class="fas fa-database"></i> Wikidata
+                        </a></li>
+                    <li><a href="https://www.openstreetmap.org/" target="_blank" rel="noopener noreferrer">
+                            <i class="fas fa-database"></i> Openstreetmap
+                        </a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>License</h4>
+                <p>All the images are displayed from <a class="footer-link"
+                        href="https://commons.wikimedia.org">Wikimedia
+                        Commons</a> and licensed in Creative commons license.</p>
+
+            </div>
+
+            <div class="footer-section">
+                <h4>Coded By Ranjithsiji</h4>
+                <p>
+                    <a class="footer-link" href="https://w.wiki/tN" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-user"></i> Meta wiki
+                    </a>
+                </p>
+                <p>
+                    <a class="footer-link" href="https://github.com/ranjithsiji" target="_blank"
+                        rel="noopener noreferrer">
+                        <i class="fas fa-user"></i> github
+                    </a>
+                </p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>Supported by <a class="footer-link" href="https://w.wiki/t9">Wikimedians of Kerala User Group</a>| Not
+                affiliated with GeoGuessr</p>
+        </div>
+    </footer>
+</body>
+
+</html>

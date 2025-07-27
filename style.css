@@ -1,0 +1,400 @@
+body {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    background-color: #2c3e50;
+    color: white;
+    padding: 5px 0;
+    text-align: center;
+    margin-bottom: 5px;
+}
+
+h1 {
+    margin: 0;
+    font-size: 2em;
+}
+
+.game-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.game-area {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.image-container {
+    position: relative;
+    height: 500px;
+    background-color: #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.image-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    background-size: cover;
+    background-position: center;
+}
+
+.image-slide.active {
+    opacity: 1;
+}
+
+.image-nav {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.nav-btn {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.nav-btn:hover {
+    background-color: #2980b9;
+}
+
+.nav-btn:disabled {
+    background-color: #95a5a6;
+    cursor: not-allowed;
+}
+
+.map-container {
+    height: 500px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #dfe0ff;
+}
+
+.guess-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.score-display,
+.round-display {
+    font-size: 1.2em;
+    font-weight: bold;
+    padding: 8px 15px;
+    background-color: #ecf0f1;
+    border-radius: 4px;
+}
+
+.guess-btn {
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    transition: background-color 0.3s;
+}
+
+.guess-btn:hover {
+    background-color: #219653;
+}
+
+.guess-btn:disabled {
+    background-color: #95a5a6;
+    cursor: not-allowed;
+}
+
+#progressbar {
+    margin-top: 20px;
+    height: 10px;
+}
+
+.ui-progressbar-value {
+    background-color: #3498db;
+}
+
+.result-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.result-content {
+    background-color: white;
+    padding: 30px;
+    border-radius: 8px;
+    max-width: 600px;
+    text-align: center;
+    display: block;
+    margin: 0 auto;
+    justify-content: center;
+}
+
+.result-distance {
+    font-size: 1.5em;
+    margin: 20px 0;
+    color: #2c3e50;
+}
+
+.result-score {
+    font-size: 2em;
+    font-weight: bold;
+    color: #27ae60;
+    margin-bottom: 20px;
+}
+
+.next-round-btn {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    transition: background-color 0.3s;
+}
+
+.next-round-btn:hover {
+    background-color: #2980b9;
+}
+
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    font-size: 1.5em;
+}
+
+.game-footer {
+    background-color: #2c3e50;
+    color: #ecf0f1;
+    padding: 30px 0 0;
+    margin-top: 40px;
+    font-size: 0.9em;
+}
+
+.footer-content {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.footer-section {
+    flex: 1;
+    min-width: 250px;
+    margin-bottom: 30px;
+    padding: 0 15px;
+}
+
+.footer-section h3,
+.footer-section h4 {
+    color: #3498db;
+    margin-bottom: 15px;
+}
+
+.footer-links {
+    list-style: none;
+    padding: 0;
+}
+
+.footer-links li {
+    margin-bottom: 10px;
+}
+
+.footer-links a {
+    color: #ecf0f1;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.footer-links a:hover {
+    color: #3498db;
+}
+
+.footer-links i {
+    margin-right: 8px;
+    width: 20px;
+    text-align: center;
+}
+
+.footer-bottom {
+    text-align: center;
+    padding: 15px 0;
+    background-color: rgba(0, 0, 0, 0.2);
+    font-size: 13px;
+}
+
+a.footer-link {
+    text-decoration: underline;
+    color: rgb(238, 201, 201);
+}
+
+@media (max-width: 768px) {
+    .footer-section {
+        flex: 100%;
+        text-align: center;
+    }
+
+    .footer-links {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+}
+
+.error-message {
+    color: #e74c3c;
+    text-align: center;
+    margin: 20px 0;
+    font-weight: bold;
+}
+
+/* Add Loading animation into the image background */
+.image-container {
+    position: relative;
+    height: 500px;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.image-container.loading::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(45deg,
+            rgba(200, 200, 200, 0.5),
+            rgba(200, 200, 200, 0.5) 10px,
+            rgba(180, 180, 180, 0.5) 10px,
+            rgba(180, 180, 180, 0.5) 20px);
+    background-size: 28px 28px;
+    animation: barberpole 1s linear infinite;
+    z-index: 0;
+}
+
+@keyframes barberpole {
+    0% {
+        background-position: 0 0;
+    }
+
+    100% {
+        background-position: 28px 0;
+    }
+}
+
+.loading-content {
+    position: relative;
+    z-index: 1;
+    height: 35%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(245, 245, 245, 0.8);
+    color: #333;
+    font-size: 0.9em;
+    text-align: center;
+    padding: 20px 40px;
+    border-radius: 20px;
+}
+
+.loading-spinner {
+    font-size: 2em;
+    margin-bottom: 15px;
+    color: #3498db;
+}
+
+.loading-progress {
+    width: 80%;
+    height: 4px;
+    background: #e0e0e0;
+    border-radius: 2px;
+    margin-top: 15px;
+    overflow: hidden;
+}
+
+.loading-progress-bar {
+    height: 100%;
+    width: 50%;
+    background: #3498db;
+    border-radius: 2px;
+    animation: progressPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes progressPulse {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(200%);
+    }
+}
+
+/* Game progress bar */
+.progress-container {
+    width: 100%;
+    height: 20px;
+    background-color: #e0e0e0;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 10px 0;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    border-radius: 10px;
+    transition: width 0.3s ease, background-color 0.3s ease;
+    background: linear-gradient(to right, #4caf50, #8bc34a);
+}
+
+.progress-text {
+    text-align: center;
+    margin-top: 5px;
+    font-size: 0.9em;
+    color: #555;
+}
