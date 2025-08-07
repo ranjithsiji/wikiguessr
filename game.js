@@ -9,8 +9,9 @@ $(document).ready(function() {
         map: null,
         round: 1,
         maxRounds: 5,
-        currentViewMode: 'gallery', // or 'slideshow'
-        slideshowInterval: null
+        locationPool: [], // Store multiple locations
+        slideshowInterval: null,
+        currentViewMode: 'gallery'
     };
     
     // Initialize the game
@@ -92,9 +93,9 @@ $(document).ready(function() {
         // Disable guess button
         $("#guessBtn").prop("disabled", true);
         
-        // Show initial loading state
-        showLoadingMessage("Finding an interesting location...");        
-
+        // Show loading message
+        showLoadingMessage("Preparing location...");
+        
         // Update progress bar
         const progress = (gameState.round / gameState.maxRounds) * 100;
         updateProgressBar(progress);
@@ -102,69 +103,148 @@ $(document).ready(function() {
         // Update round display
         $("#roundDisplay").text(`Round: ${gameState.round}/${gameState.maxRounds}`);
         
-        // Get a random location with images
-        getRandomLocationWithImages(
-            function(locationData) {
-                // Success callback
-                gameState.currentLocation = {
-                    lat: parseFloat(locationData.lat),
-                    lon: parseFloat(locationData.lon),
-                    name: locationData.itemLabel,  // This comes from itemLabel
-                    description: locationData.itemDescription,
-                    item: locationData.item
-                };
-                
-                // Show loading message for images
-                showLoadingMessage("Loading images from Wikimedia Commons...");
+        // If first round, use quick location and fetch Wikidata locations in background
+        if (gameState.round === 1) {
+            // Use quick location for first round
+            const quickLocation = getQuickRandomLocation();
+            gameState.currentLocation = {
+                lat: quickLocation.lat,
+                lon: quickLocation.lon,
+                name: quickLocation.name,
+                country: quickLocation.country,
+                item: "" // No Wikidata item for quick locations
+            };
+            
+            // Start loading Wikidata locations in background
+            getWikidataLocationsBatch(locations => {
+                gameState.locationPool = locations;
+            });
+            
+            // Load images for quick location
+            loadLocationImages();
+        } 
+        // If we have locations in pool, use one
+        else if (gameState.locationPool.length > 0) {
+            const locationData = gameState.locationPool.pop();
+            gameState.currentLocation = {
+                lat: locationData.lat,
+                lon: locationData.lon,
+                name: locationData.itemLabel,
+                country: locationData.countryLabel,
+                item: locationData.item
+            };
+            loadLocationImages();
+        }
+        // Otherwise fall back to single query
+        else {
+            getRandomLocationWithImages(
+                locationData => {
+                    gameState.currentLocation = {
+                        lat: locationData.lat,
+                        lon: locationData.lon,
+                        name: locationData.itemLabel,
+                        country: locationData.countryLabel,
+                        item: locationData.item
+                    };
+                    loadLocationImages();
+                },
+                error => {
+                    showError("Failed to load location. Trying again...");
+                    setTimeout(startNewRound, 1500);
+                }
+            );
+        }
+    }
 
-                // First try to get images from Wikimedia Commons
-                getImagesFromCommons(
-                    gameState.currentLocation.lat,
-                    gameState.currentLocation.lon,
-                    function(images) {
-                        if (images.length === 0) {
-                            showLoadingMessage("No Commons images found. Trying Wikidata...");
-                            throw new Error('No Commons images found');
+    function loadLocationImages() {
+        showLoadingMessage("Loading images...");
+        
+        if (gameState.currentLocation.item) {
+            // Try to get images from Wikimedia Commons first
+            getImagesFromCommons(
+                gameState.currentLocation.lat,
+                gameState.currentLocation.lon,
+                function(images) {
+                    if (images.length === 0) {
+                        throw new Error('No Commons images found');
+                    }
+                    gameState.images = images;
+                    displayImage(0);
+                },
+                function () {
+                    // Fall back to Wikidata images if Commons fails
+                    getImagesFromWikidata(
+                        gameState.currentLocation.item,
+                        function(images) {
+                            if (images.length === 0) {
+                                showError("No images found. Trying again...");
+                                setTimeout(startNewRound, 1500);
+                                return;
+                            }
+                            gameState.images = images;
+                            displayImage(0);
+                        },
+                        function(error) {
+                            showError("Failed to load images. Trying again...");
+                            setTimeout(startNewRound, 1500);
                         }
+                    );
+                }
+            );
+        } else {
+            // For quick locations, use a generic image search
+            const query = gameState.currentLocation.name.replace(/\s+/g, '+');
+            const url = `https://en.wikipedia.org/w/api.php?action=query&generator=images&gimlimit=5&prop=imageinfo&iiprop=url&format=json&origin=*&titles=${query}`;
+            
+            $.ajax({
+                url: url,
+                dataType: 'json',
+                success: function(data) {
+                    const images = [];
+                    if (data.query && data.query.pages) {
+                        Object.values(data.query.pages).forEach(page => {
+                            if (page.imageinfo && page.imageinfo[0]) {
+                                images.push({
+                                    url: page.imageinfo[0].url,
+                                    title: page.title.replace('File:', '')
+                                });
+                            }
+                        });
+                    }
+                    
+                    if (images.length > 0) {
                         gameState.images = images;
                         displayImage(0);
-                        //gameState.map.setView([gameState.currentLocation.lat, gameState.currentLocation.lon], 10);
-                    },
-                    function () {
-                        // Fall back to Wikidata images if Commons fails
-                        showLoadingMessage("Loading images from Wikidata...");
-                        // Fall back to Wikidata images if Commons fails
-                        getImagesFromWikidata(
-                            locationData.item,
-                            function(images) {
-                                if (images.length === 0) {
-                                    showError("No images found. Trying again...");
-                                    setTimeout(startNewRound, 1500);
-                                    return;
-                                }
-                                gameState.images = images;
-                                displayImage(0);
-                                gameState.map.setView([gameState.currentLocation.lat, gameState.currentLocation.lon], 10);
-                            },
-                            function(error) {
-                                showError("Failed to load images. Trying again...");
-                                console.error("Image loading error:", error);
-                                setTimeout(startNewRound, 1500);
-                            }
-                        );
+                    } else {
+                        showError("No images found. Trying again...");
+                        setTimeout(startNewRound, 1500);
                     }
-                );
-            },
-            function(error) {
-                // Error callback
-                showError("Failed to load location. Trying again...");
-                console.error("Location loading error:", error);
-                setTimeout(startNewRound, 1500);
-            }
-        );
+                },
+                error: function() {
+                    showError("Failed to load images. Trying again...");
+                    setTimeout(startNewRound, 1500);
+                }
+            });
+        }
     }
-    
-    function getRandomLocationWithImages(successCallback, errorCallback) {
+    function getQuickRandomLocation() {
+        // Simple list of well-known locations with coordinates
+        const quickLocations = [
+            {name: "Eiffel Tower", lat: 48.8584, lon: 2.2945, country: "France"},
+            {name: "Statue of Liberty", lat: 40.6892, lon: -74.0445, country: "United States"},
+            {name: "Great Wall of China", lat: 40.4319, lon: 116.5704, country: "China"},
+            {name: "Taj Mahal", lat: 27.1751, lon: 78.0421, country: "India"},
+            {name: "Sydney Opera House", lat: -33.8568, lon: 151.2153, country: "Australia"},
+            {name: "Machu Picchu", lat: -13.1631, lon: -72.5450, country: "Peru"},
+            {name: "Colosseum", lat: 41.8902, lon: 12.4924, country: "Italy"},
+            {name: "Christ the Redeemer", lat: -22.9519, lon: -43.2105, country: "Brazil"},
+            {name: "Pyramids of Giza", lat: 29.9792, lon: 31.1342, country: "Egypt"},
+            {name: "Mount Fuji", lat: 35.3606, lon: 138.7274, country: "Japan"}
+        ];
+        
+        return quickLocations[Math.floor(Math.random() * quickLocations.length)];
+    }
+    function getWikidataLocationsBatch(callback) {
         const randomOffset = Math.floor(Math.random() * 1000000);
         const query = `
             SELECT ?item ?itemLabel ?itemDescription ?lat ?lon ?photo WHERE { 
@@ -176,14 +256,14 @@ $(document).ready(function() {
                         ?statement psv:P625 ?coords . 
                         ?coords wikibase:geoLatitude ?lat . 
                         ?coords wikibase:geoLongitude ?lon . 
-                    } LIMIT 1 OFFSET ${randomOffset}
+                        FILTER(ABS(?lat) < 70)  # Avoid polar regions
+                    } LIMIT 10 OFFSET ${randomOffset}
                 } 
                 SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } 
             }`;
         
         const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}&format=json`;
-        //Update message that we are running the SPARQL Querry on Wikidata.
-        showLoadingMessage("Loading an Interesting location from Wikidata...");
+        
         $.ajax({
             url: url,
             method: 'GET',
@@ -193,27 +273,23 @@ $(document).ready(function() {
             },
             success: function(data) {
                 if (data.results.bindings.length > 0) {
-                    const result = data.results.bindings[0];
-                    const lat = parseFloat(result.lat.value);
-                    const lon = parseFloat(result.lon.value);
-                    const label = result.itemLabel.value;
-                    console.log(result);
-                    successCallback({
+                    const locations = data.results.bindings.map(result => ({
                         item: result.item.value,
-                        itemLabel: label,
-                        itemDescription: result.itemDescription.value,
+                        itemLabel: result.itemLabel.value,
                         image: result.photo.value,
-                        lon: lon,
-                        lat: lat,
-                        countryLabel: result.countryLabel?.value || ''  // Include country if available
-                    });
+                        lon: parseFloat(result.lon.value),
+                        lat: parseFloat(result.lat.value),
+                        countryLabel: result.countryLabel?.value || ''
+                    }));
+                    callback(locations);
                 } else {
-                    errorCallback(new Error('No results from SPARQL query'));
-                    return;
+                    console.error("No results from SPARQL query");
+                    callback([]);
                 }
             },
             error: function(xhr, status, error) {
-                errorCallback(new Error(`SPARQL query failed: ${status}`));
+                console.error("SPARQL query failed:", status);
+                callback([]);
             }
         });
     }
