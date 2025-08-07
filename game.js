@@ -8,7 +8,9 @@ $(document).ready(function() {
         score: 0,
         map: null,
         round: 1,
-        maxRounds: 5
+        maxRounds: 5,
+        currentViewMode: 'gallery', // or 'slideshow'
+        slideshowInterval: null
     };
     
     // Initialize the game
@@ -107,8 +109,8 @@ $(document).ready(function() {
                 gameState.currentLocation = {
                     lat: parseFloat(locationData.lat),
                     lon: parseFloat(locationData.lon),
-                    name: locationData.itemLabel,
-                    country: locationData.countryLabel,
+                    name: locationData.itemLabel,  // This comes from itemLabel
+                    description: locationData.itemDescription,
                     item: locationData.item
                 };
                 
@@ -195,13 +197,15 @@ $(document).ready(function() {
                     const lat = parseFloat(result.lat.value);
                     const lon = parseFloat(result.lon.value);
                     const label = result.itemLabel.value;
-                    
+                    console.log(result);
                     successCallback({
                         item: result.item.value,
                         itemLabel: label,
+                        itemDescription: result.itemDescription.value,
                         image: result.photo.value,
                         lon: lon,
-                        lat: lat
+                        lat: lat,
+                        countryLabel: result.countryLabel?.value || ''  // Include country if available
                     });
                 } else {
                     errorCallback(new Error('No results from SPARQL query'));
@@ -304,53 +308,143 @@ $(document).ready(function() {
     }
     function displayImage(index) {
         if (gameState.images.length === 0) return;
-        
-        // Handle looping
-        if (index >= gameState.images.length) {
-            index = 0;
-        } else if (index < 0) {
-            index = gameState.images.length - 1;
+
+        // Clear any existing slideshow interval
+        if (gameState.slideshowInterval) {
+            clearInterval(gameState.slideshowInterval);
+            gameState.slideshowInterval = null;
         }
-        
-        gameState.currentImageIndex = index;
-        const image = gameState.images[index];
-        
+
         // Remove loading state
-        $("#imageContainer")
+        const $imageContainer = $("#imageContainer")
             .removeClass("loading")
-            .empty(); // Clear loading content
-        
-        // Update image counter
-        $("#imageCounter").text(`${index + 1} / ${gameState.images.length}`);
-        
-        // Create image slides if they don't exist
-        if ($("#imageContainer .image-slide").length !== gameState.images.length) {
-            $("#imageContainer").empty();
-            
-            gameState.images.forEach((img, i) => {
-                const slide = $("<div>")
-                    .addClass("image-slide")
-                    .css("background-image", `url(${img.thumbUrl || img.url})`)
-                    .toggleClass("active", i === index);
-                
-                // Add attribution if available
-                if (img.license) {
-                    const attribution = $("<div>").addClass("image-attribution");
-                   // if (img.artist) attribution.append($("<span>").text(`Photo by ${img.artist}`));
-                    if (img.license) attribution.append($("<span>").text(` (${img.license})`));
-                    slide.append(attribution);
-                }
-                
-                slide.appendTo("#imageContainer");
-            });
+            .empty();
+
+        // Create view mode toggle button
+       // const $toggleBtn = $('<button class="view-mode-toggle" id="viewModeToggle"></button>');
+        //$imageContainer.append($toggleBtn);
+        updateViewModeToggle();
+
+        if (gameState.currentViewMode === 'slideshow') {
+            setupSlideshow($imageContainer);
         } else {
-            // Just update which slide is active
-            $("#imageContainer .image-slide").removeClass("active").eq(index).addClass("active");
+            setupGallery($imageContainer);
+        }
+
+        // Update image counter
+        $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
+    }
+    
+    function setupSlideshow($container) {
+        // Create slideshow container
+        const $slideshow = $('<div class="slideshow-container"></div>');
+        
+        // Create single slide
+        const $slide = $('<div class="slideshow-slide"></div>');
+        const currentImage = gameState.images[gameState.currentImageIndex];
+        
+        // Create image element
+        const $img = $('<img>')
+            .attr('src', currentImage.thumbUrl || currentImage.url)
+            .attr('alt', currentImage.title || 'Location image');
+        
+        // Add class based on image orientation
+        const img = new Image();
+        img.onload = function() {
+            if (this.width > this.height) {
+                $img.addClass('landscape');
+            } else {
+                $img.addClass('portrait');
+            }
+        };
+        img.src = currentImage.thumbUrl || currentImage.url;
+        
+        // Add attribution if available
+        if (currentImage.license) {
+            const $attribution = $('<div class="image-attribution"></div>')
+                .text(`License: ${currentImage.license}`);
+            $slide.append($attribution);
         }
         
-        // Update nav button states (never disabled in loop mode)
-        $("#prevBtn").prop("disabled", false);
-        $("#nextBtn").prop("disabled", false);
+        $slide.append($img);
+        $slideshow.append($slide);
+        $container.append($slideshow);
+        
+        // Start slideshow autoplay
+        gameState.slideshowInterval = setInterval(() => {
+            gameState.currentImageIndex = (gameState.currentImageIndex + 1) % gameState.images.length;
+            updateSlideshowImage();
+        }, 3000);
+    }
+
+    function updateSlideshowImage() {
+        const currentImage = gameState.images[gameState.currentImageIndex];
+        const $slideshow = $("#imageContainer .slideshow-container");
+        const $img = $slideshow.find('img');
+        
+        // Update image source
+        $img.attr({
+            'src': currentImage.thumbUrl || currentImage.url,
+            'alt': currentImage.title || 'Location image'
+        });
+        
+        // Update image class based on orientation
+        const img = new Image();
+        img.onload = function() {
+            $img.removeClass('landscape portrait');
+            if (this.width > this.height) {
+                $img.addClass('landscape');
+            } else {
+                $img.addClass('portrait');
+            }
+        };
+        img.src = currentImage.thumbUrl || currentImage.url;
+        
+        // Update attribution
+        const $attribution = $slideshow.find('.image-attribution');
+        if (currentImage.license) {
+            $attribution.text(`License: ${currentImage.license}`).show();
+        } else {
+            $attribution.hide();
+        }
+        
+        // Update counter
+        $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
+    }
+
+    function setupGallery($container) {
+        // Create gallery container
+        const $gallery = $('<div class="gallery-container"></div>');
+        
+        // Create all thumbnails
+        gameState.images.forEach((image, index) => {
+            const $thumbnail = $('<div class="gallery-thumbnail"></div>')
+                .toggleClass('active', index === gameState.currentImageIndex);
+            
+            const $img = $('<img>')
+                .attr('src', image.thumbUrl || image.url)
+                .attr('alt', image.title || 'Location image');
+            
+            $thumbnail.append($img);
+            $thumbnail.click(() => {
+                gameState.currentImageIndex = index;
+                $gallery.find('.gallery-thumbnail').removeClass('active');
+                $thumbnail.addClass('active');
+            });
+            
+            $gallery.append($thumbnail);
+        });
+        
+        $container.append($gallery);
+    }
+
+    function updateViewModeToggle() {
+        const $toggle = $("#viewModeToggle");
+        if (gameState.currentViewMode === 'slideshow') {
+            $toggle.html('<i class="fas fa-th"></i> Gallery View');
+        } else {
+            $toggle.html('<i class="fas fa-film"></i> Slideshow View');
+        }
     }
     
     function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -377,6 +471,9 @@ $(document).ready(function() {
     function submitGuess() {
         if (!gameState.userGuess || !gameState.currentLocation) return;
         
+        // Clear the image container
+        $("#imageContainer").empty();
+        
         const userLatLng = gameState.userGuess.getLatLng();
         const distance = calculateDistance(
             gameState.currentLocation.lat,
@@ -389,14 +486,24 @@ $(document).ready(function() {
         gameState.score += score;
         
         // Show the actual location on the map
-        L.marker([gameState.currentLocation.lat, gameState.currentLocation.lon], {
+        const actualMarker = L.marker([gameState.currentLocation.lat, gameState.currentLocation.lon], {
             icon: L.divIcon({
                 className: 'actual-marker',
                 html: '<i class="fas fa-map-marker-alt" style="color: green; font-size: 24px;"></i>',
                 iconSize: [24, 24],
                 iconAnchor: [12, 24]
             })
-        }).bindPopup(`<b>${gameState.currentLocation.name}</b><br>${gameState.currentLocation.country}`).addTo(gameState.map);
+        }).addTo(gameState.map);
+        
+        // Create a more detailed popup with location name and country
+        const popupContent = `
+            <div style="text-align: center;">
+                <h3 style="margin: 0 0 5px 0; color: #2c3e50;">${gameState.currentLocation.name}</h3>
+                <p style="margin: 0; color: #7f8c8d;">${gameState.currentLocation.description || 'No description'}</p>
+            </div>
+        `;
+        
+        actualMarker.bindPopup(popupContent).openPopup();
         
         // Draw a line between the guess and actual location
         L.polyline([
@@ -411,13 +518,27 @@ $(document).ready(function() {
         ]);
         gameState.map.fitBounds(bounds, { padding: [50, 50] });
         
-        // Show results
+        // Show results with location name
         showResults(distance, score);
     }
     
     function showResults(distance, score) {
-        $("#resultDistance").text(`Your guess was ${distance.toFixed(1)} km away`);
-        $("#resultScore").text(`+${score} points`);
+        // Get the location name from gameState.currentLocation.name (which comes from itemLabel)
+        const locationName = gameState.currentLocation.name || "Unknown Location";
+        
+        // Create the result HTML with the location name
+        const resultHTML = `
+            <h2>${locationName}</h2>
+            <div class="result-distance">
+                Your guess was <strong>${distance.toFixed(1)} km</strong> away
+            </div>
+            <div class="result-score">
+                +${score} points
+            </div>
+        `;
+        
+        // Update the modal content
+        $("#resultDistance").html(resultHTML);
         
         // Add a fun message based on distance
         let message = "";
@@ -439,6 +560,7 @@ $(document).ready(function() {
         $("#resultModal").show();
         $("#scoreDisplay").text(`Score: ${gameState.score}`);
     }
+
     
     function showError(message) {
         $(".error-message").remove();
@@ -453,25 +575,46 @@ $(document).ready(function() {
     }
     
     function setupEventListeners() {
+        $("#viewModeToggle").click(function() {
+            if (gameState.slideshowInterval) {
+                clearInterval(gameState.slideshowInterval);
+                gameState.slideshowInterval = null;
+            }
+            
+            gameState.currentViewMode = gameState.currentViewMode === 'slideshow' ? 'gallery' : 'slideshow';
+            displayImage(gameState.currentImageIndex);
+        });
         // Image navigation - loop continuously
         $("#prevBtn").click(function() {
-            displayImage(gameState.currentImageIndex - 1);
-        });
-        
-        $("#nextBtn").click(function() {
-            displayImage(gameState.currentImageIndex + 1);
-        });
-        
-        // Keyboard navigation - also loops
-        $(document).keydown(function(e) {
-            if (e.key === "ArrowLeft") {
-                $("#prevBtn").click();
-            } else if (e.key === "ArrowRight") {
-                $("#nextBtn").click();
-            } else if (e.key === "Enter" && !$("#guessBtn").prop("disabled")) {
-                $("#guessBtn").click();
+            if (gameState.images.length === 0) return;
+            
+            gameState.currentImageIndex = (gameState.currentImageIndex - 1 + gameState.images.length) % gameState.images.length;
+            
+            if (gameState.currentViewMode === 'slideshow') {
+                updateSlideshowImage();
+            } else {
+                $("#imageContainer .gallery-thumbnail").removeClass('active')
+                    .eq(gameState.currentImageIndex).addClass('active');
             }
+            
+            $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
         });
+
+        $("#nextBtn").click(function() {
+            if (gameState.images.length === 0) return;
+            
+            gameState.currentImageIndex = (gameState.currentImageIndex + 1) % gameState.images.length;
+            
+            if (gameState.currentViewMode === 'slideshow') {
+                updateSlideshowImage();
+            } else {
+                $("#imageContainer .gallery-thumbnail").removeClass('active')
+                    .eq(gameState.currentImageIndex).addClass('active');
+            }
+            
+            $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
+        });
+
 
         // Guess button
         $("#guessBtn").click(submitGuess);
@@ -494,7 +637,7 @@ $(document).ready(function() {
         $(".game-area").html(`
             <div style="text-align: center; padding: 40px; border:4px solid #ccc; border-radious:20px;margin:10px;color:green; font-size:2.5em; box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);">
                 <h2>🎉 Game Complete! 🎊</h2>
-                <p style="font-size: 2.5em;">🥳 Your final score: <strong>${gameState.score}</strong></p>
+                <p style="font-size: 1.5em;">🥳 Your final score: <strong>${gameState.score}</strong></p>
                 <button id="restartBtn" class="next-round-btn" style="margin-top: 20px;">Play Again</button>
             </div>
         `);
