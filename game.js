@@ -114,7 +114,6 @@ $(document).ready(function() {
                 country: quickLocation.country,
                 item: "" // No Wikidata item for quick locations
             };
-            
             // Start loading Wikidata locations in background
             getWikidataLocationsBatch(locations => {
                 gameState.locationPool = locations;
@@ -189,7 +188,9 @@ $(document).ready(function() {
                             setTimeout(startNewRound, 1500);
                         }
                     );
-                }
+                },
+                5, //Radius Kms
+                20 //No of images
             );
         } else {
             // For quick locations, use a generic image search
