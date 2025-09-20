@@ -194,9 +194,12 @@ $(document).ready(function() {
             );
         } else {
             // For quick locations, use a generic image search
+            const qlat = gameState.currentLocation.lat;
+            const qlon = gameState.currentLocation.lon;
             const query = gameState.currentLocation.name.replace(/\s+/g, '+');
-            const url = `https://en.wikipedia.org/w/api.php?action=query&generator=images&gimlimit=5&prop=imageinfo&iiprop=url&format=json&origin=*&titles=${query}`;
-            
+           // const url = `https://en.wikipedia.org/w/api.php?action=query&generator=images&gimlimit=5&prop=imageinfo&iiprop=url&format=json&origin=*&titles=${query}`;
+            const url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=geosearch&ggsprimary=all&ggsnamespace=6&ggsradius=10&ggscoord=${qlat}|${qlon}&ggslimit=20&prop=imageinfo&iiprop=url|extmetadata|coordinates&iiurlwidth=500&origin=*`;
+
             $.ajax({
                 url: url,
                 dataType: 'json',
@@ -232,16 +235,102 @@ $(document).ready(function() {
         // Simple list of well-known locations with coordinates
         const quickLocations = [
             {name: "Eiffel Tower", lat: 48.8584, lon: 2.2945, country: "France"},
-            {name: "Statue of Liberty", lat: 40.6892, lon: -74.0445, country: "United States"},
+            {name: "Statue of Liberty", lat: 40.6892, lon: -74.0445, country: "USA"},
+            {name: "Colosseum", lat: 41.8902, lon: 12.4922, country: "Italy"},
             {name: "Great Wall of China", lat: 40.4319, lon: 116.5704, country: "China"},
             {name: "Taj Mahal", lat: 27.1751, lon: 78.0421, country: "India"},
-            {name: "Sydney Opera House", lat: -33.8568, lon: 151.2153, country: "Australia"},
             {name: "Machu Picchu", lat: -13.1631, lon: -72.5450, country: "Peru"},
-            {name: "Colosseum", lat: 41.8902, lon: 12.4924, country: "Italy"},
-            {name: "Christ the Redeemer", lat: -22.9519, lon: -43.2105, country: "Brazil"},
             {name: "Pyramids of Giza", lat: 29.9792, lon: 31.1342, country: "Egypt"},
-            {name: "Mount Fuji", lat: 35.3606, lon: 138.7274, country: "Japan"}
-        ];
+            {name: "Christ the Redeemer", lat: -22.9519, lon: -43.2105, country: "Brazil"},
+            {name: "Sydney Opera House", lat: -33.8568, lon: 151.2153, country: "Australia"},
+            {name: "Angkor Wat", lat: 13.4125, lon: 103.8670, country: "Cambodia"},
+            {name: "The Acropolis", lat: 37.9715, lon: 23.7257, country: "Greece"},
+            {name: "Golden Gate Bridge", lat: 37.8199, lon: -122.4783, country: "USA"},
+            {name: "Stonehenge", lat: 51.1789, lon: -1.8262, country: "UK"},
+            {name: "Mount Everest", lat: 27.9881, lon: 86.9250, country: "Nepal"},
+            {name: "Niagara Falls", lat: 43.0896, lon: -79.0747, country: "Canada/USA"},
+            {name: "Chichen Itza", lat: 20.6843, lon: -88.5678, country: "Mexico"},
+            {name: "Leaning Tower of Pisa", lat: 43.7230, lon: 10.3966, country: "Italy"},
+            {name: "Burj Khalifa", lat: 25.1972, lon: 55.2744, country: "UAE"},
+            {name: "Great Barrier Reef", lat: -18.2871, lon: 147.6992, country: "Australia"},
+            {name: "Petra", lat: 30.3285, lon: 35.4444, country: "Jordan"},
+            {name: "Victoria Falls", lat: -17.9243, lon: 25.8567, country: "Zambia/Zimbabwe"},
+            {name: "Mount Kilimanjaro", lat: -3.0674, lon: 37.3556, country: "Tanzania"},
+            {name: "Table Mountain", lat: -33.9575, lon: 18.4042, country: "South Africa"},
+            {name: "Forbidden City", lat: 39.9166, lon: 116.3972, country: "China"},
+            {name: "The Louvre Museum", lat: 48.8606, lon: 2.3376, country: "France"},
+            {name: "Grand Canyon", lat: 36.1015, lon: -112.1129, country: "USA"},
+            {name: "Iguazu Falls", lat: -25.6953, lon: -54.4366, country: "Argentina/Brazil"},
+            {name: "Hagia Sophia", lat: 41.0086, lon: 28.9801, country: "Turkey"},
+            {name: "Neuschwanstein Castle", lat: 47.5576, lon: 10.7498, country: "Germany"},
+            {name: "Sagrada Família", lat: 41.4036, lon: 2.1744, country: "Spain"},
+            {name: "Eiffel Tower", lat: 48.8584, lon: 2.2945, country: "France"},
+            {name: "St. Peter's Basilica", lat: 41.9022, lon: 12.4578, country: "Vatican City"},
+            {name: "The Dead Sea", lat: 31.5340, lon: 35.4984, country: "Jordan/Israel"},
+            {name: "Bora Bora", lat: -16.5004, lon: -151.7415, country: "French Polynesia"},
+            {name: "Galapagos Islands", lat: -0.7063, lon: -90.9656, country: "Ecuador"},
+            {name: "Yosemite National Park", lat: 37.8651, lon: -119.5383, country: "USA"},
+            {name: "The Shard", lat: 51.5045, lon: -0.0865, country: "UK"},
+            {name: "Sistine Chapel", lat: 41.9029, lon: 12.4545, country: "Vatican City"},
+            {name: "Empire State Building", lat: 40.7484, lon: -73.9857, country: "USA"},
+            {name: "Big Ben", lat: 51.5007, lon: -0.1246, country: "UK"},
+            {name: "Uluru (Ayers Rock)", lat: -25.3444, lon: 131.0369, country: "Australia"},
+            {name: "Chichen Itza", lat: 20.6843, lon: -88.5678, country: "Mexico"},
+            {name: "Golden Temple", lat: 31.6200, lon: 74.8765, country: "India"},
+            {name: "Sagano Bamboo Forest", lat: 35.0116, lon: 135.7681, country: "Japan"},
+            {name: "Blue Mosque", lat: 41.0054, lon: 28.9768, country: "Turkey"},
+            {name: "Rapa Nui (Easter Island)", lat: -27.1127, lon: -109.3496, country: "Chile"},
+            {name: "Serengeti National Park", lat: -2.3333, lon: 34.8333, country: "Tanzania"},
+            {name: "Himalayas", lat: 27.9881, lon: 86.9250, country: "Nepal/China"},
+            {name: "Machu Picchu", lat: -13.1631, lon: -72.5450, country: "Peru"},
+            {name: "The Amazon Rainforest", lat: -3.4653, lon: -62.2159, country: "Brazil"},
+            {name: "Uyuni Salt Flats", lat: -20.2111, lon: -67.4566, country: "Bolivia"},
+            {name: "Angel Falls", lat: 5.9714, lon: -62.5348, country: "Venezuela"},
+            {name: "Mount Rushmore", lat: 43.8791, lon: -103.4591, country: "USA"},
+            {name: "Golden Gate Bridge", lat: 37.8199, lon: -122.4783, country: "USA"},
+            {name: "Central Park", lat: 40.7850, lon: -73.9683, country: "USA"},
+            {name: "Hollywood Sign", lat: 34.1341, lon: -118.3215, country: "USA"},
+            {name: "Red Square", lat: 55.7539, lon: 37.6208, country: "Russia"},
+            {name: "Trevi Fountain", lat: 41.9009, lon: 12.4833, country: "Italy"},
+            {name: "Himeji Castle", lat: 34.8395, lon: 134.6859, country: "Japan"},
+            {name: "Mount Fuji", lat: 35.3606, lon: 138.7282, country: "Japan"},
+            {name: "Wailing Wall", lat: 31.7767, lon: 35.2346, country: "Israel"},
+            {name: "Dead Sea", lat: 31.5340, lon: 35.4984, country: "Jordan/Israel"},
+            {name: "Grand Canyon National Park", lat: 36.1015, lon: -112.1129, country: "USA"},
+            {name: "Loch Ness", lat: 57.3228, lon: -4.4849, country: "Scotland"},
+            {name: "Mount Vesuvius", lat: 40.8224, lon: 14.4289, country: "Italy"},
+            {name: "The Parthenon", lat: 37.9715, lon: 23.7257, country: "Greece"},
+            {name: "The Gherkin", lat: 51.5144, lon: -0.0805, country: "UK"},
+            {name: "Brandenburg Gate", lat: 52.5163, lon: 13.3777, country: "Germany"},
+            {name: "The Sagrada Família", lat: 41.4036, lon: 2.1744, country: "Spain"},
+            {name: "Alhambra", lat: 37.1773, lon: -3.5982, country: "Spain"},
+            {name: "Hagia Sophia", lat: 41.0086, lon: 28.9801, country: "Turkey"},
+            {name: "Blue Lagoon", lat: 63.8814, lon: -22.4497, country: "Iceland"},
+            {name: "The Blue Grotto", lat: 40.5562, lon: 14.2155, country: "Italy"},
+            {name: "Great Smoky Mountains", lat: 35.6315, lon: -83.5070, country: "USA"},
+            {name: "The Palace of Versailles", lat: 48.8049, lon: 2.1204, country: "France"},
+            {name: "Suez Canal", lat: 30.6406, lon: 32.5599, country: "Egypt"},
+            {name: "Panama Canal", lat: 9.0766, lon: -79.6450, country: "Panama"},
+            {name: "The Forbidden City", lat: 39.9166, lon: 116.3972, country: "China"},
+            {name: "The Hermitage Museum", lat: 59.9401, lon: 30.3145, country: "Russia"},
+            {name: "Rialto Bridge", lat: 45.4380, lon: 12.3359, country: "Italy"},
+            {name: "Table Mountain National Park", lat: -33.9575, lon: 18.4042, country: "South Africa"},
+            {name: "Mount Everest", lat: 27.9881, lon: 86.9250, country: "Nepal/China"},
+            {name: "The Twelve Apostles", lat: -38.6654, lon: 143.0478, country: "Australia"},
+            {name: "The London Eye", lat: 51.5033, lon: -0.1196, country: "UK"},
+            {name: "Machu Picchu", lat: -13.1631, lon: -72.5450, country: "Peru"},
+            {name: "Burj Al Arab", lat: 25.1417, lon: 55.1852, country: "UAE"},
+            {name: "Christ the Redeemer", lat: -22.9519, lon: -43.2105, country: "Brazil"},
+            {name: "The Colosseum", lat: 41.8902, lon: 12.4922, country: "Italy"},
+            {name: "Times Square", lat: 40.7580, lon: -73.9855, country: "USA"},
+            {name: "Disneyland Paris", lat: 48.8687, lon: 2.7828, country: "France"},
+            {name: "Great Barrier Reef", lat: -18.2871, lon: 147.6992, country: "Australia"},
+            {name: "Grand Canyon", lat: 36.1015, lon: -112.1129, country: "USA"},
+            {name: "Chichen Itza", lat: 20.6843, lon: -88.5678, country: "Mexico"},
+            {name: "Mount Fuji", lat: 35.3606, lon: 138.7282, country: "Japan"},
+            {name: "Taj Mahal", lat: 27.1751, lon: 78.0421, country: "India"},
+            {name: "The Eiffel Tower", lat: 48.8584, lon: 2.2945, country: "France"}
+            ];
         
         return quickLocations[Math.floor(Math.random() * quickLocations.length)];
     }
@@ -262,7 +351,6 @@ $(document).ready(function() {
                 } 
                 SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } 
             }`;
-        
         const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}&format=json`;
         
         $.ajax({
