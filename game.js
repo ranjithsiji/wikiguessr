@@ -214,7 +214,7 @@ $(document).ready(function() {
                                 images.push({
                                     url: imageInfo.url,
                                     thumbUrl: imageInfo.thumburl,
-                                    smallUrl: imageInfo.responsiveUrls,
+                                    smallUrl: imageInfo.responsiveUrls['1.5'],
                                     title: page.title.replace('File:', ''),
                                     description: metadata.ImageDescription ? metadata.ImageDescription.value : '',
                                     license: metadata.LicenseShortName ? metadata.LicenseShortName.value : ''
@@ -411,7 +411,7 @@ $(document).ready(function() {
                             images.push({
                                 url: imageInfo.url,
                                 thumbUrl: imageInfo.thumburl,
-                                smallUrl: imageInfo.responsiveUrls,
+                                smallUrl: imageInfo.responsiveUrls['1.5'],
                                 title: page.title.replace('File:', ''),
                                 description: metadata.ImageDescription ? metadata.ImageDescription.value : '',
                                 license: metadata.LicenseShortName ? metadata.LicenseShortName.value : ''
@@ -570,7 +570,6 @@ $(document).ready(function() {
         // Create single slide
         const $slide = $('<div class="slideshow-slide"></div>');
         const currentImage = gameState.images[gameState.currentImageIndex];
-        console.log(currentImage.smallUrl["1.5"]);
         // Create image element
         const $img = $('<img>')
             .attr('src', currentImage.thumbUrl)
@@ -609,7 +608,6 @@ $(document).ready(function() {
         const currentImage = gameState.images[gameState.currentImageIndex];
         const $slideshow = $("#imageContainer .slideshow-container");
         const $img = $slideshow.find('img');
-        console.log(currentImage.smallUrl["1.5"];
         // Update image source
         $img.attr({
             'src': currentImage.thumbUrl,
