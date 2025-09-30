@@ -214,7 +214,7 @@ $(document).ready(function() {
                                 images.push({
                                     url: imageInfo.url,
                                     thumbUrl: imageInfo.thumburl,
-                                    smallUrl: imageInfo.responsiveUrls['1.5'],
+                                    smallUrl: imageInfo.responsiveUrls,
                                     title: page.title.replace('File:', ''),
                                     description: metadata.ImageDescription ? metadata.ImageDescription.value : '',
                                     license: metadata.LicenseShortName ? metadata.LicenseShortName.value : ''
@@ -411,7 +411,7 @@ $(document).ready(function() {
                             images.push({
                                 url: imageInfo.url,
                                 thumbUrl: imageInfo.thumburl,
-                                smallUrl: imageInfo.responsiveUrls['1.5'],
+                                smallUrl: imageInfo.responsiveUrls,
                                 title: page.title.replace('File:', ''),
                                 description: metadata.ImageDescription ? metadata.ImageDescription.value : '',
                                 license: metadata.LicenseShortName ? metadata.LicenseShortName.value : ''
