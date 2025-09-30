@@ -513,7 +513,6 @@ $(document).ready(function() {
                     const lat = parseFloat(result.lat.value);
                     const lon = parseFloat(result.lon.value);
                     const label = result.itemLabel.value;
-                    console.log(result);
                     successCallback({
                         item: result.item.value,
                         itemLabel: label,
