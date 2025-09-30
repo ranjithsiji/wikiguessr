@@ -210,10 +210,32 @@ $(document).ready(function() {
                             if (page.imageinfo && page.imageinfo[0]) {
                                 const imageInfo = page.imageinfo[0];
                                 const metadata = imageInfo.extmetadata || {};
+                                 // Initialize URLs with fallbacks
+                                let smallUrl = imageInfo.thumburl;
+                                let mediumUrl = imageInfo.thumburl;
+                                if (imageInfo.responsiveUrls && typeof imageInfo.responsiveUrls === 'object') {
+                                    let count = 0;
+                                    // Use for...in loop to iterate through responsiveUrls
+                                    for (const key in imageInfo.responsiveUrls) {
+                                        if (imageInfo.responsiveUrls.hasOwnProperty(key)) {
+                                            if (count === 0) {
+                                                // First URL -> smallUrl
+                                                smallUrl = imageInfo.responsiveUrls[key];
+                                            } else if (count === 1) {
+                                                // Second URL -> mediumUrl
+                                                mediumUrl = imageInfo.responsiveUrls[key];
+                                                break; // We got both, exit loop
+                                            }
+                                            count++;
+                                        }
+                                    }
+                                }
+
                                 images.push({
                                     url: imageInfo.url,
                                     thumbUrl: imageInfo.thumburl,
-                                    smallUrl: imageInfo.responsiveUrls ? imageInfo.responsiveUrls['1.5'] : imageInfo.thumburl,
+                                    smallUrl: smallUrl,
+                                    mediumUrl: mediumUrl,
                                     title: page.title.replace('File:', ''),
                                     description: metadata.ImageDescription ? metadata.ImageDescription.value : '',
                                     license: metadata.LicenseShortName ? metadata.LicenseShortName.value : ''
@@ -406,11 +428,30 @@ $(document).ready(function() {
                         if (page.imageinfo && page.imageinfo[0]) {
                             const imageInfo = page.imageinfo[0];
                             const metadata = imageInfo.extmetadata || {};
-                            
+                            let smallUrl = imageInfo.thumburl;
+                            let mediumUrl = imageInfo.thumburl;
+                            if (imageInfo.responsiveUrls && typeof imageInfo.responsiveUrls === 'object') {
+                                let count = 0;
+                                // Use for...in loop to iterate through responsiveUrls
+                                for (const key in imageInfo.responsiveUrls) {
+                                    if (imageInfo.responsiveUrls.hasOwnProperty(key)) {
+                                        if (count === 0) {
+                                            // First URL -> smallUrl
+                                            smallUrl = imageInfo.responsiveUrls[key];
+                                        } else if (count === 1) {
+                                            // Second URL -> mediumUrl
+                                            mediumUrl = imageInfo.responsiveUrls[key];
+                                            break; // We got both, exit loop
+                                        }
+                                        count++;
+                                    }
+                                }
+                            }
                             images.push({
                                 url: imageInfo.url,
                                 thumbUrl: imageInfo.thumburl,
-                                smallUrl: imageInfo.responsiveUrls ? imageInfo.responsiveUrls['1.5'] : imageInfo.thumburl,
+                                smallUrl: smallUrl,
+                                mediumUrl:mediumUrl,
                                 title: page.title.replace('File:', ''),
                                 description: metadata.ImageDescription ? metadata.ImageDescription.value : '',
                                 license: metadata.LicenseShortName ? metadata.LicenseShortName.value : ''
@@ -569,6 +610,7 @@ $(document).ready(function() {
         // Create single slide
         const $slide = $('<div class="slideshow-slide"></div>');
         const currentImage = gameState.images[gameState.currentImageIndex];
+        console.log(currentImage);
         // Create image element
         const $img = $('<img>')
             .attr('src', currentImage.smallUrl)
