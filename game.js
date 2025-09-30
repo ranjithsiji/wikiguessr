@@ -391,7 +391,7 @@ $(document).ready(function() {
     }
     
     function getImagesFromCommons(lat, lon, successCallback, errorCallback, radiusKm = 5, limit = 20) {
-        console.log("getting images");
+        console.log("getting images from commons");
         const radiusMeters = Math.round(radiusKm * 1000);
         const url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=geosearch&ggsprimary=all&ggsnamespace=6&ggsradius=${radiusMeters}&ggscoord=${lat}|${lon}&ggslimit=${limit}&prop=imageinfo&iiprop=url|extmetadata|dimensions&iiurlwidth=500&origin=*`;
         
