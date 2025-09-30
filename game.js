@@ -359,7 +359,7 @@ $(document).ready(function() {
                 SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } 
             }`;
         const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}&format=json`;
-        
+        console.log ("Get Batch location from Wikidata");
         $.ajax({
             url: url,
             method: 'GET',
@@ -500,6 +500,7 @@ $(document).ready(function() {
         const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}&format=json`;
         //Update message that we are running the SPARQL Querry on Wikidata.
         showLoadingMessage("Loading an Interesting location from Wikidata...");
+        console.log("Get single location from Wikidata::")
         $.ajax({
             url: url,
             method: 'GET',
