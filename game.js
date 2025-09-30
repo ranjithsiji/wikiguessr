@@ -610,7 +610,6 @@ $(document).ready(function() {
         // Create single slide
         const $slide = $('<div class="slideshow-slide"></div>');
         const currentImage = gameState.images[gameState.currentImageIndex];
-        console.log(currentImage);
         // Create image element
         const $img = $('<img>')
             .attr('src', currentImage.smallUrl)
