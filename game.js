@@ -571,7 +571,7 @@ $(document).ready(function() {
         const currentImage = gameState.images[gameState.currentImageIndex];
         // Create image element
         const $img = $('<img>')
-            .attr('src', currentImage.thumbUrl)
+            .attr('src', currentImage.smallUrl)
             .attr('alt', currentImage.title || 'Location image');
         
         // Add class based on image orientation
@@ -583,7 +583,7 @@ $(document).ready(function() {
                 $img.addClass('portrait');
             }
         };
-        img.src = currentImage.thumbUrl;
+        img.src = currentImage.smallUrl;
         
         // Add attribution if available
         if (currentImage.license) {
@@ -609,7 +609,7 @@ $(document).ready(function() {
         const $img = $slideshow.find('img');
         // Update image source
         $img.attr({
-            'src': currentImage.thumbUrl,
+            'src': currentImage.smallUrl,
             'alt': currentImage.license || 'Location image license'
         });
         
@@ -623,7 +623,7 @@ $(document).ready(function() {
                 $img.addClass('portrait');
             }
         };
-        img.src = currentImage.thumbUrl;
+        img.src = currentImage.smallUrl;
         
         // Update attribution
         const $attribution = $slideshow.find('.image-attribution');
