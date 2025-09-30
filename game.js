@@ -217,7 +217,6 @@ $(document).ready(function() {
                                     let count = 0;
                                     // Use for...in loop to iterate through responsiveUrls
                                     for (const key in imageInfo.responsiveUrls) {
-                                        console.log(key);
                                         if (imageInfo.responsiveUrls.hasOwnProperty(key)) {
                                             if (count === 0) {
                                                 // First URL -> smallUrl
@@ -231,7 +230,6 @@ $(document).ready(function() {
                                         }
                                     }
                                 }
-
                                 images.push({
                                     url: imageInfo.url,
                                     thumbUrl: imageInfo.thumburl,
@@ -436,7 +434,6 @@ $(document).ready(function() {
                                 // Use for...in loop to iterate through responsiveUrls
                                 for (const key in imageInfo.responsiveUrls) {
                                     if (imageInfo.responsiveUrls.hasOwnProperty(key)) {
-                                        console.log(key);
                                         if (count === 0) {
                                             // First URL -> smallUrl
                                             smallUrl = imageInfo.responsiveUrls[key];
@@ -614,8 +611,8 @@ $(document).ready(function() {
         const currentImage = gameState.images[gameState.currentImageIndex];
         // Create image element
         const $img = $('<img>')
-            .attr('src', currentImage.smallUrl)
-            .attr('alt', currentImage.title || 'Location image');
+            .attr('src', currentImage.smallUrl || currentImage.thumbUrl)
+            .attr('alt', currentImage.license || 'Location image');
         
         // Add class based on image orientation
         const img = new Image();
@@ -626,7 +623,7 @@ $(document).ready(function() {
                 $img.addClass('portrait');
             }
         };
-        img.src = currentImage.smallUrl;
+        img.src = currentImage.smallUrl || currentImage.thumbUrl;
         
         // Add attribution if available
         if (currentImage.license) {
@@ -652,7 +649,7 @@ $(document).ready(function() {
         const $img = $slideshow.find('img');
         // Update image source
         $img.attr({
-            'src': currentImage.smallUrl,
+            'src': currentImage.smallUrl || currentImage.thumbUrl,
             'alt': currentImage.license || 'Location image license'
         });
         
@@ -666,7 +663,7 @@ $(document).ready(function() {
                 $img.addClass('portrait');
             }
         };
-        img.src = currentImage.smallUrl;
+        img.src = currentImage.smallUrl || currentImage.thumbUrl;
         
         // Update attribution
         const $attribution = $slideshow.find('.image-attribution');
