@@ -479,6 +479,61 @@ $(document).ready(function() {
                 </div>
             `);
     }
+
+    function getRandomLocationWithImages(successCallback, errorCallback) {
+        const randomOffset = Math.floor(Math.random() * 1000000);
+        const query = `
+            SELECT ?item ?itemLabel ?itemDescription ?lat ?lon ?photo WHERE { 
+                { 
+                    SELECT ?item ?photo ?lat ?lon
+                    WHERE { 
+                        ?item wdt:P18 ?photo .  
+                        ?item p:P625 ?statement . 
+                        ?statement psv:P625 ?coords . 
+                        ?coords wikibase:geoLatitude ?lat . 
+                        ?coords wikibase:geoLongitude ?lon . 
+                    } LIMIT 1 OFFSET ${randomOffset}
+                } 
+                SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } 
+            }`;
+        
+        const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}&format=json`;
+        //Update message that we are running the SPARQL Querry on Wikidata.
+        showLoadingMessage("Loading an Interesting location from Wikidata...");
+        $.ajax({
+            url: url,
+            method: 'GET',
+            dataType: 'json',
+            headers: {
+                'Accept': 'application/json',
+            },
+            success: function(data) {
+                if (data.results.bindings.length > 0) {
+                    const result = data.results.bindings[0];
+                    const lat = parseFloat(result.lat.value);
+                    const lon = parseFloat(result.lon.value);
+                    const label = result.itemLabel.value;
+                    console.log(result);
+                    successCallback({
+                        item: result.item.value,
+                        itemLabel: label,
+                        itemDescription: result.itemDescription.value,
+                        image: result.photo.value,
+                        lon: lon,
+                        lat: lat,
+                        countryLabel: result.countryLabel?.value || ''  // Include country if available
+                    });
+                } else {
+                    errorCallback(new Error('No results from SPARQL query'));
+                    return;
+                }
+            },
+            error: function(xhr, status, error) {
+                errorCallback(new Error(`SPARQL query failed: ${status}`));
+            }
+        });
+    }
+
     function displayImage(index) {
         if (gameState.images.length === 0) return;
 
@@ -515,7 +570,7 @@ $(document).ready(function() {
         // Create single slide
         const $slide = $('<div class="slideshow-slide"></div>');
         const currentImage = gameState.images[gameState.currentImageIndex];
-        
+        console.log(currentImage.smallUrl[1]);
         // Create image element
         const $img = $('<img>')
             .attr('src', currentImage.thumbUrl)
@@ -554,7 +609,7 @@ $(document).ready(function() {
         const currentImage = gameState.images[gameState.currentImageIndex];
         const $slideshow = $("#imageContainer .slideshow-container");
         const $img = $slideshow.find('img');
-        
+        console.log(currentImage.smallUrl[1]);
         // Update image source
         $img.attr({
             'src': currentImage.thumbUrl,
