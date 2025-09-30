@@ -210,7 +210,7 @@ $(document).ready(function() {
                             if (page.imageinfo && page.imageinfo[0]) {
                                 const imageInfo = page.imageinfo[0];
                                 const metadata = imageInfo.extmetadata || {};
-                                console.log(imageInfo.responsiveUrls.2);
+                                console.log(imageInfo.responsiveUrls);
                                 images.push({
                                     url: imageInfo.url,
                                     thumbUrl: imageInfo.thumburl,
