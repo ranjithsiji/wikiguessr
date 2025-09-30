@@ -198,7 +198,7 @@ $(document).ready(function() {
             const qlon = gameState.currentLocation.lon;
             const query = gameState.currentLocation.name.replace(/\s+/g, '+');
            // const url = `https://en.wikipedia.org/w/api.php?action=query&generator=images&gimlimit=5&prop=imageinfo&iiprop=url&format=json&origin=*&titles=${query}`;
-            const url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=geosearch&ggsprimary=all&ggsnamespace=6&ggsradius=10&ggscoord=${qlat}|${qlon}&ggslimit=20&prop=imageinfo&iiprop=url|extmetadata|coordinates&iiurlwidth=500&origin=*`;
+            const url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=geosearch&ggsprimary=all&ggsnamespace=6&ggsradius=10&ggscoord=${qlat}|${qlon}&ggslimit=20&prop=imageinfo&iiprop=url|extmetadata|dimensions&iiurlwidth=500&origin=*`;
 
             $.ajax({
                 url: url,
@@ -208,9 +208,16 @@ $(document).ready(function() {
                     if (data.query && data.query.pages) {
                         Object.values(data.query.pages).forEach(page => {
                             if (page.imageinfo && page.imageinfo[0]) {
+                                const imageInfo = page.imageinfo[0];
+                                const metadata = imageInfo.extmetadata || {};
+                                console.log(imageInfo);
                                 images.push({
-                                    url: page.imageinfo[0].url,
-                                    title: page.title.replace('File:', '')
+                                    url: imageInfo.url,
+                                    thumbUrl: imageInfo.thumburl,
+                                    smallUrl: imageInfo.responsiveUrls,
+                                    title: page.title.replace('File:', ''),
+                                    description: metadata.ImageDescription ? metadata.ImageDescription.value : '',
+                                    license: metadata.LicenseShortName ? metadata.LicenseShortName.value : ''
                                 });
                             }
                         });
@@ -384,8 +391,9 @@ $(document).ready(function() {
     }
     
     function getImagesFromCommons(lat, lon, successCallback, errorCallback, radiusKm = 5, limit = 20) {
+        console.log("getting images");
         const radiusMeters = Math.round(radiusKm * 1000);
-        const url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=geosearch&ggsprimary=all&ggsnamespace=6&ggsradius=${radiusMeters}&ggscoord=${lat}|${lon}&ggslimit=${limit}&prop=imageinfo&iiprop=url|extmetadata|coordinates&iiurlwidth=500&origin=*`;
+        const url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=geosearch&ggsprimary=all&ggsnamespace=6&ggsradius=${radiusMeters}&ggscoord=${lat}|${lon}&ggslimit=${limit}&prop=imageinfo&iiprop=url|extmetadata|dimensions&iiurlwidth=500&origin=*`;
         
         $.ajax({
             url: url,
@@ -394,7 +402,6 @@ $(document).ready(function() {
                 if (data.query && data.query.pages) {
                     const images = [];
                     const pages = data.query.pages;
-                    
                     for (const pageId in pages) {
                         const page = pages[pageId];
                         if (page.imageinfo && page.imageinfo[0]) {
@@ -403,7 +410,8 @@ $(document).ready(function() {
                             
                             images.push({
                                 url: imageInfo.url,
-                                thumbUrl: imageInfo.thumburl || imageInfo.url,
+                                thumbUrl: imageInfo.thumburl,
+                                smallUrl: imageInfo.responsiveUrls,
                                 title: page.title.replace('File:', ''),
                                 description: metadata.ImageDescription ? metadata.ImageDescription.value : '',
                                 license: metadata.LicenseShortName ? metadata.LicenseShortName.value : ''
@@ -510,7 +518,7 @@ $(document).ready(function() {
         
         // Create image element
         const $img = $('<img>')
-            .attr('src', currentImage.thumbUrl || currentImage.url)
+            .attr('src', currentImage.thumbUrl)
             .attr('alt', currentImage.title || 'Location image');
         
         // Add class based on image orientation
@@ -522,7 +530,7 @@ $(document).ready(function() {
                 $img.addClass('portrait');
             }
         };
-        img.src = currentImage.thumbUrl || currentImage.url;
+        img.src = currentImage.thumbUrl;
         
         // Add attribution if available
         if (currentImage.license) {
@@ -549,8 +557,8 @@ $(document).ready(function() {
         
         // Update image source
         $img.attr({
-            'src': currentImage.thumbUrl || currentImage.url,
-            'alt': currentImage.title || 'Location image'
+            'src': currentImage.thumbUrl,
+            'alt': currentImage.license || 'Location image license'
         });
         
         // Update image class based on orientation
@@ -563,7 +571,7 @@ $(document).ready(function() {
                 $img.addClass('portrait');
             }
         };
-        img.src = currentImage.thumbUrl || currentImage.url;
+        img.src = currentImage.thumbUrl;
         
         // Update attribution
         const $attribution = $slideshow.find('.image-attribution');
@@ -580,15 +588,14 @@ $(document).ready(function() {
     function setupGallery($container) {
         // Create gallery container
         const $gallery = $('<div class="gallery-container"></div>');
-        
         // Create all thumbnails
         gameState.images.forEach((image, index) => {
             const $thumbnail = $('<div class="gallery-thumbnail"></div>')
                 .toggleClass('active', index === gameState.currentImageIndex);
             
             const $img = $('<img>')
-                .attr('src', image.thumbUrl || image.url)
-                .attr('alt', image.title || 'Location image');
+                .attr('src', image.thumbUrl )
+                .attr('alt', image.license || 'Location image license');
             
             $thumbnail.append($img);
             $thumbnail.click(() => {
@@ -816,19 +823,26 @@ $(document).ready(function() {
                     <div class="loading">
                         <i class="fas fa-spinner loading-spinner"></i> Loading game...
                     </div>
-                </div>
-                
-                <div class="image-nav">
-                    <button class="nav-btn" id="prevBtn"><i class="fas fa-arrow-left"></i> Previous</button>
+                    </div>
+
+                    <div class="image-nav">
+                    <button class="nav-btn" id="prevBtn">
+                        <i class="fas fa-arrow-left"></i> Previous
+                    </button>
                     <span id="imageCounter">1 / 1</span>
-                    <button class="nav-btn" id="nextBtn">Next <i class="fas fa-arrow-right"></i></button>
-                </div>
-                
-                <div class="map-container" id="map"></div>
-                
-                <div class="guess-controls">
+                    <button class="nav-btn" id="nextBtn">
+                        Next <i class="fas fa-arrow-right"></i>
+                    </button>
+                    <button class="view-mode-toggle" id="viewModeToggle"></button>
+                    </div>
+
+                    
+
+                    <div class="guess-controls">
+                    <p>Click on the map below to mark your guess.</p>
                     <button class="guess-btn" id="guessBtn" disabled>Make Guess</button>
-                </div>
+                    </div>
+                    <div class="map-container" id="map"></div>
             `);
             
             // Reinitialize map and game
