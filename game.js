@@ -570,7 +570,7 @@ $(document).ready(function() {
         // Create single slide
         const $slide = $('<div class="slideshow-slide"></div>');
         const currentImage = gameState.images[gameState.currentImageIndex];
-        console.log(currentImage.smallUrl[1]);
+        console.log(currentImage.smallUrl["1.5"]);
         // Create image element
         const $img = $('<img>')
             .attr('src', currentImage.thumbUrl)
@@ -609,7 +609,7 @@ $(document).ready(function() {
         const currentImage = gameState.images[gameState.currentImageIndex];
         const $slideshow = $("#imageContainer .slideshow-container");
         const $img = $slideshow.find('img');
-        console.log(currentImage.smallUrl[1]);
+        console.log(currentImage.smallUrl["1.5"];
         // Update image source
         $img.attr({
             'src': currentImage.thumbUrl,
