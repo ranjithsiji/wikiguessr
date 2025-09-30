@@ -217,6 +217,7 @@ $(document).ready(function() {
                                     let count = 0;
                                     // Use for...in loop to iterate through responsiveUrls
                                     for (const key in imageInfo.responsiveUrls) {
+                                        console.log(key);
                                         if (imageInfo.responsiveUrls.hasOwnProperty(key)) {
                                             if (count === 0) {
                                                 // First URL -> smallUrl
@@ -435,6 +436,7 @@ $(document).ready(function() {
                                 // Use for...in loop to iterate through responsiveUrls
                                 for (const key in imageInfo.responsiveUrls) {
                                     if (imageInfo.responsiveUrls.hasOwnProperty(key)) {
+                                        console.log(key);
                                         if (count === 0) {
                                             // First URL -> smallUrl
                                             smallUrl = imageInfo.responsiveUrls[key];
