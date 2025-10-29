@@ -17,8 +17,21 @@ $(document).ready(function() {
     initGame();
     
     function initGame() {
-        // Initialize progress bar
-        updateProgressBar(0);   // Red/orange (0-30%)
+        // Reset game state completely
+        gameState.score = 0;
+        gameState.round = 1;
+        gameState.currentLocation = null;
+        gameState.userGuess = null;
+        gameState.images = [];
+        gameState.currentImageIndex = 0;
+        gameState.currentViewMode = 'gallery';
+        
+        // Initialize progress bar to 0
+        updateProgressBar(0);
+        
+        // Update displays
+        $("#scoreDisplay").text(`Score: ${gameState.score}`);
+        $("#roundDisplay").text(`Round: ${gameState.round}/${gameState.maxRounds}`);
         
         // Initialize map
         initMap();
@@ -31,6 +44,11 @@ $(document).ready(function() {
     }
     
     function initMap() {
+        // Clear existing map if it exists
+        if (gameState.map) {
+            gameState.map.remove();
+        }
+        
         gameState.map = L.map('map').setView([0, 0], 2);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -54,17 +72,16 @@ $(document).ready(function() {
             $("#guessBtn").prop("disabled", false);
         });
     }
+    
     // Update progress bar with jQuery
     function updateProgressBar(percentage) {
         const $progressBar = $('#progressBar');
-        
         
         // Ensure percentage is between 0 and 100
         percentage = Math.max(0, Math.min(100, percentage));
         
         // Update width and text
         $progressBar.css('width', `${percentage}%`);
-        
         
         // Change color based on percentage
         if (percentage < 30) {
@@ -95,12 +112,15 @@ $(document).ready(function() {
         // Show initial loading state
         showLoadingMessage("Finding an interesting location...");        
 
-        // Update progress bar
-        const progress = (gameState.round / gameState.maxRounds) * 100;
+        // Update progress bar - fix the calculation
+        const progress = ((gameState.round - 1) / gameState.maxRounds) * 100;
         updateProgressBar(progress);
         
         // Update round display
         $("#roundDisplay").text(`Round: ${gameState.round}/${gameState.maxRounds}`);
+        
+        // Reset image counter to show loading state
+        $("#imageCounter").text("Loading...");
         
         // Get a random location with images
         getRandomLocationWithImages(
@@ -293,6 +313,7 @@ $(document).ready(function() {
             }
         });
     }
+    
     function showLoadingMessage(message) {
         $("#imageContainer")
             .addClass("loading")
@@ -306,9 +327,16 @@ $(document).ready(function() {
                 </div>
             `);
     }
+    
     function displayImage(index) {
-        if (gameState.images.length === 0) return;
+        if (gameState.images.length === 0) {
+            $("#imageCounter").text("0 / 0");
+            return;
+        }
 
+        // Ensure index is valid
+        gameState.currentImageIndex = Math.max(0, Math.min(index, gameState.images.length - 1));
+        
         // Clear any existing slideshow interval
         if (gameState.slideshowInterval) {
             clearInterval(gameState.slideshowInterval);
@@ -320,9 +348,7 @@ $(document).ready(function() {
             .removeClass("loading")
             .empty();
 
-        // Create view mode toggle button
-       // const $toggleBtn = $('<button class="view-mode-toggle" id="viewModeToggle"></button>');
-        //$imageContainer.append($toggleBtn);
+        // Update view mode toggle button
         updateViewModeToggle();
 
         if (gameState.currentViewMode === 'slideshow') {
@@ -331,7 +357,7 @@ $(document).ready(function() {
             setupGallery($imageContainer);
         }
 
-        // Update image counter
+        // Update image counter AFTER images are loaded
         $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
     }
     
@@ -378,6 +404,8 @@ $(document).ready(function() {
     }
 
     function updateSlideshowImage() {
+        if (gameState.images.length === 0) return;
+        
         const currentImage = gameState.images[gameState.currentImageIndex];
         const $slideshow = $("#imageContainer .slideshow-container");
         const $img = $slideshow.find('img');
@@ -413,6 +441,12 @@ $(document).ready(function() {
     }
 
     function setupGallery($container) {
+        // Ensure we have images before setting up gallery
+        if (gameState.images.length === 0) {
+            $container.html('<div class="no-images">No images available</div>');
+            return;
+        }
+        
         // Create gallery container
         const $gallery = $('<div class="gallery-container"></div>');
         
@@ -423,13 +457,19 @@ $(document).ready(function() {
             
             const $img = $('<img>')
                 .attr('src', image.thumbUrl || image.url)
-                .attr('alt', image.title || 'Location image');
+                .attr('alt', image.title || 'Location image')
+                .on('error', function() {
+                    // If thumbnail fails, try the full URL
+                    $(this).attr('src', image.url);
+                });
             
             $thumbnail.append($img);
             $thumbnail.click(() => {
                 gameState.currentImageIndex = index;
                 $gallery.find('.gallery-thumbnail').removeClass('active');
                 $thumbnail.addClass('active');
+                // Update counter when thumbnail is clicked
+                $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
             });
             
             $gallery.append($thumbnail);
@@ -584,6 +624,7 @@ $(document).ready(function() {
             gameState.currentViewMode = gameState.currentViewMode === 'slideshow' ? 'gallery' : 'slideshow';
             displayImage(gameState.currentImageIndex);
         });
+        
         // Image navigation - loop continuously
         $("#prevBtn").click(function() {
             if (gameState.images.length === 0) return;
@@ -615,7 +656,6 @@ $(document).ready(function() {
             $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
         });
 
-
         // Guess button
         $("#guessBtn").click(submitGuess);
         
@@ -643,9 +683,21 @@ $(document).ready(function() {
         `);
         
         $("#restartBtn").click(function() {
-            // Reset game
+            // Reset game completely
             gameState.score = 0;
             gameState.round = 1;
+            gameState.currentLocation = null;
+            gameState.userGuess = null;
+            gameState.images = [];
+            gameState.currentImageIndex = 0;
+            gameState.currentViewMode = 'gallery';
+            
+            if (gameState.slideshowInterval) {
+                clearInterval(gameState.slideshowInterval);
+                gameState.slideshowInterval = null;
+            }
+            
+            // Restore the original game area HTML
             $(".game-area").html(`
                 <div class="image-container" id="imageContainer">
                     <div class="loading">
@@ -654,22 +706,25 @@ $(document).ready(function() {
                 </div>
                 
                 <div class="image-nav">
-                    <button class="nav-btn" id="prevBtn"><i class="fas fa-arrow-left"></i> Previous</button>
+                    <button class="nav-btn" id="prevBtn">
+                        <i class="fas fa-arrow-left"></i> Previous
+                    </button>
                     <span id="imageCounter">1 / 1</span>
-                    <button class="nav-btn" id="nextBtn">Next <i class="fas fa-arrow-right"></i></button>
+                    <button class="nav-btn" id="nextBtn">
+                        Next <i class="fas fa-arrow-right"></i>
+                    </button>
+                    <button class="view-mode-toggle" id="viewModeToggle"></button>
                 </div>
-                
-                <div class="map-container" id="map"></div>
                 
                 <div class="guess-controls">
+                    <p>Click on the map below to mark your guess.</p>
                     <button class="guess-btn" id="guessBtn" disabled>Make Guess</button>
                 </div>
+                <div class="map-container" id="map"></div>
             `);
             
-            // Reinitialize map and game
-            initMap();
-            setupEventListeners();
-            startNewRound();
+            // Reinitialize the complete game
+            initGame();
         });
     }
 });
