@@ -94,6 +94,16 @@ $(document).ready(function() {
     }
 
     function startNewRound() {
+        // CRITICAL FIX: Force gallery mode before loading new images to prevent NaN issues
+        // Clear any existing slideshow interval first
+        if (gameState.slideshowInterval) {
+            clearInterval(gameState.slideshowInterval);
+            gameState.slideshowInterval = null;
+        }
+        
+        // Force gallery mode for new round loading
+        gameState.currentViewMode = 'gallery';
+        
         // Reset round state
         gameState.userGuess = null;
         gameState.images = [];
@@ -362,6 +372,12 @@ $(document).ready(function() {
     }
     
     function setupSlideshow($container) {
+        // Additional safety check to ensure we have images
+        if (gameState.images.length === 0) {
+            $container.html('<div class="no-images">No images available</div>');
+            return;
+        }
+        
         // Create slideshow container
         const $slideshow = $('<div class="slideshow-container"></div>');
         
@@ -396,11 +412,13 @@ $(document).ready(function() {
         $slideshow.append($slide);
         $container.append($slideshow);
         
-        // Start slideshow autoplay
-        gameState.slideshowInterval = setInterval(() => {
-            gameState.currentImageIndex = (gameState.currentImageIndex + 1) % gameState.images.length;
-            updateSlideshowImage();
-        }, 3000);
+        // Start slideshow autoplay only if we have valid images
+        if (gameState.images.length > 1) {
+            gameState.slideshowInterval = setInterval(() => {
+                gameState.currentImageIndex = (gameState.currentImageIndex + 1) % gameState.images.length;
+                updateSlideshowImage();
+            }, 3000);
+        }
     }
 
     function updateSlideshowImage() {
@@ -494,7 +512,7 @@ $(document).ready(function() {
         const a = 
             Math.sin(dLat/2) * Math.sin(dLat/2) +
             Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-            Math.sin(dLon/2) * Math.sin(dLon/2);
+            Math.sin(dLat/2) * Math.sin(dLat/2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         return R * c;
     }
