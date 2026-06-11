@@ -22,7 +22,8 @@ $(document).ready(function() {
         round: 1,
         maxRounds: 5,
         currentViewMode: 'gallery', // 'gallery' or 'slideshow'
-        slideshowInterval: null
+        slideshowInterval: null,
+        slideshowPaused: false
     };
 
     // Hardcoded fallback pool — used only when the Wikidata pool is empty at round start.
@@ -119,6 +120,8 @@ $(document).ready(function() {
             clearInterval(gameState.slideshowInterval);
             gameState.slideshowInterval = null;
         }
+        gameState.slideshowPaused = false;
+        $('.slideshow-progress-bar').css('animation', 'none');
     }
 
     // ---------------------------------------------------------------------------
@@ -438,6 +441,8 @@ $(document).ready(function() {
         $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
     }
 
+    const SLIDESHOW_INTERVAL_MS = 4000;
+
     function setupSlideshow($container) {
         if (gameState.images.length === 0) {
             $container.html('<div class="no-images">No images available</div>');
@@ -464,16 +469,71 @@ $(document).ready(function() {
             );
         }
 
+        // Progress bar strip at the bottom of the slide
+        const $progressWrap = $('<div class="slideshow-progress"></div>');
+        const $progressBar = $('<div class="slideshow-progress-bar"></div>');
+        $progressWrap.append($progressBar);
+
+        // Pause / resume button overlaid on the slide
+        const $pauseBtn = $('<button class="slideshow-pause-btn" aria-label="Pause slideshow"></button>')
+            .html('<i class="fas fa-pause"></i>');
+
         $slide.append($img);
         $slideshow.append($slide);
+        $slideshow.append($progressWrap);
+        $slideshow.append($pauseBtn);
         $container.append($slideshow);
 
+        $pauseBtn.on('click', function() {
+            if (gameState.slideshowPaused) {
+                resumeSlideshow();
+            } else {
+                pauseSlideshow();
+            }
+        });
+
         if (gameState.images.length > 1) {
-            gameState.slideshowInterval = setInterval(() => {
-                gameState.currentImageIndex = (gameState.currentImageIndex + 1) % gameState.images.length;
-                updateSlideshowImage();
-            }, 3000);
+            startSlideshowTimer();
         }
+    }
+
+    function startSlideshowTimer() {
+        if (gameState.slideshowInterval) clearInterval(gameState.slideshowInterval);
+
+        // Restart the CSS progress animation
+        const $bar = $('.slideshow-progress-bar');
+        $bar.css('animation', 'none');
+        // Force reflow so removing animation takes effect before re-adding
+        $bar[0] && $bar[0].offsetWidth;
+        $bar.css('animation', `slideshow-tick ${SLIDESHOW_INTERVAL_MS}ms linear forwards`);
+
+        gameState.slideshowInterval = setInterval(() => {
+            gameState.currentImageIndex = (gameState.currentImageIndex + 1) % gameState.images.length;
+            updateSlideshowImage();
+            // Restart bar for the new image
+            $bar.css('animation', 'none');
+            $bar[0] && $bar[0].offsetWidth;
+            $bar.css('animation', `slideshow-tick ${SLIDESHOW_INTERVAL_MS}ms linear forwards`);
+        }, SLIDESHOW_INTERVAL_MS);
+    }
+
+    function pauseSlideshow() {
+        if (!gameState.slideshowInterval) return;
+        clearInterval(gameState.slideshowInterval);
+        gameState.slideshowInterval = null;
+        gameState.slideshowPaused = true;
+        // Freeze the progress bar in place
+        const $bar = $('.slideshow-progress-bar');
+        const computed = window.getComputedStyle($bar[0]);
+        $bar.css({ animation: 'none', width: computed.width });
+        $('.slideshow-pause-btn').html('<i class="fas fa-play"></i>').attr('aria-label', 'Resume slideshow');
+    }
+
+    function resumeSlideshow() {
+        if (!gameState.slideshowPaused || gameState.images.length <= 1) return;
+        gameState.slideshowPaused = false;
+        $('.slideshow-pause-btn').html('<i class="fas fa-pause"></i>').attr('aria-label', 'Pause slideshow');
+        startSlideshowTimer();
     }
 
     function updateSlideshowImage() {
