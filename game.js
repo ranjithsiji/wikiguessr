@@ -68,6 +68,7 @@ $(document).ready(function() {
         gameState.currentViewMode = 'gallery';
 
         updateProgressBar(0);
+        $("#progressContainer").show();
         $("#scoreDisplay").text(`Score: ${gameState.score}`);
         $("#roundDisplay").text(`Round: ${gameState.round}/${gameState.maxRounds}`);
 
@@ -238,7 +239,7 @@ $(document).ready(function() {
 
         $("#guessBtn").prop("disabled", true);
 
-        const progress = ((gameState.round - 1) / gameState.maxRounds) * 100;
+        const progress = (gameState.round / gameState.maxRounds) * 100;
         updateProgressBar(progress);
         $("#roundDisplay").text(`Round: ${gameState.round}/${gameState.maxRounds}`);
         $("#imageCounter").text("Loading...");
@@ -776,6 +777,8 @@ $(document).ready(function() {
     // ---------------------------------------------------------------------------
 
     function endGame() {
+        updateProgressBar(100);
+        $("#progressContainer").hide();
         $(".game-area").html(`
             <div class="game-over-screen">
                 <h2>🎉 Game Complete! 🎊</h2>
