@@ -25,6 +25,32 @@ $(document).ready(function() {
         slideshowInterval: null
     };
 
+    // Hardcoded fallback pool — used only when the Wikidata pool is empty at round start.
+    // Geographically diverse: spread across continents, mix of natural and urban.
+    // Each entry uses a synthetic item ID so seenItems deduplication works normally.
+    const FALLBACK_LOCATIONS = [
+        { item: 'fallback:iguazu',       itemLabel: 'Iguazu Falls',            itemDescription: 'Waterfalls on the border of Argentina and Brazil', lat: -25.6953, lon: -54.4366 },
+        { item: 'fallback:capetown',     itemLabel: 'Cape Town',               itemDescription: 'City at the southern tip of Africa', lat: -33.9249, lon: 18.4241 },
+        { item: 'fallback:hokkaido',     itemLabel: 'Hokkaido',                itemDescription: 'Northernmost main island of Japan', lat: 43.2203, lon: 142.8635 },
+        { item: 'fallback:patagonia',    itemLabel: 'Patagonia',               itemDescription: 'Vast wilderness region at the southern tip of South America', lat: -50.9423, lon: -72.9019 },
+        { item: 'fallback:varanasi',     itemLabel: 'Varanasi',                itemDescription: 'Ancient city on the Ganges river in northern India', lat: 25.3176, lon: 82.9739 },
+        { item: 'fallback:kilimanjaro',  itemLabel: 'Mount Kilimanjaro',       itemDescription: "Africa's highest peak in Tanzania", lat: -3.0674, lon: 37.3556 },
+        { item: 'fallback:marrakech',    itemLabel: 'Marrakech',               itemDescription: 'Imperial city in Morocco at the foot of the Atlas Mountains', lat: 31.6295, lon: -7.9811 },
+        { item: 'fallback:luangprabang', itemLabel: 'Luang Prabang',           itemDescription: 'Ancient royal capital on the Mekong River in Laos', lat: 19.8845, lon: 102.1347 },
+        { item: 'fallback:georgia',      itemLabel: 'Kazbegi',                 itemDescription: 'Mountain town in the Greater Caucasus, Georgia', lat: 42.6512, lon: 44.6374 },
+        { item: 'fallback:azores',       itemLabel: 'Azores',                  itemDescription: 'Volcanic archipelago in the mid-Atlantic', lat: 37.7412, lon: -25.6756 },
+        { item: 'fallback:queenstown',   itemLabel: 'Queenstown',              itemDescription: 'Town on the shores of Lake Wakatipu, New Zealand', lat: -45.0312, lon: 168.6626 },
+        { item: 'fallback:cappadocia',   itemLabel: 'Cappadocia',              itemDescription: 'Region in central Turkey known for its volcanic landscape', lat: 38.6431, lon: 34.8289 },
+        { item: 'fallback:banff',        itemLabel: 'Banff National Park',     itemDescription: 'Mountain park in the Canadian Rockies', lat: 51.4968, lon: -115.9281 },
+        { item: 'fallback:fjordnorway',  itemLabel: 'Geirangerfjord',          itemDescription: 'UNESCO-listed fjord in western Norway', lat: 62.1002, lon: 7.2059 },
+        { item: 'fallback:zanzibar',     itemLabel: 'Zanzibar',                itemDescription: 'Coral island off the coast of Tanzania', lat: -6.1659, lon: 39.2026 },
+        { item: 'fallback:antelope',     itemLabel: 'Antelope Canyon',         itemDescription: 'Slot canyon on Navajo land in Arizona, USA', lat: 36.8619, lon: -111.3743 },
+        { item: 'fallback:kerala',       itemLabel: 'Kerala Backwaters',       itemDescription: 'Network of canals, lakes and lagoons in southern India', lat: 9.4981, lon: 76.3388 },
+        { item: 'fallback:iceland',      itemLabel: 'Þingvellir',              itemDescription: 'Rift valley where the North American and Eurasian plates meet, Iceland', lat: 64.2559, lon: -21.1302 },
+        { item: 'fallback:mekong',       itemLabel: 'Mekong Delta',            itemDescription: 'River delta in southern Vietnam', lat: 10.0452, lon: 105.7469 },
+        { item: 'fallback:sahara',       itemLabel: 'Sahara Desert',           itemDescription: 'Vast hot desert spanning northern Africa', lat: 23.4162, lon: 25.6628 }
+    ];
+
     initGame();
 
     // ---------------------------------------------------------------------------
@@ -157,32 +183,6 @@ $(document).ready(function() {
             }
         });
     }
-
-    // Hardcoded fallback pool — used only when the Wikidata pool is empty at round start.
-    // Geographically diverse: spread across continents, mix of natural and urban.
-    // Each entry uses a synthetic item ID so seenItems deduplication works normally.
-    const FALLBACK_LOCATIONS = [
-        { item: 'fallback:iguazu',       itemLabel: 'Iguazu Falls',            itemDescription: 'Waterfalls on the border of Argentina and Brazil', lat: -25.6953, lon: -54.4366 },
-        { item: 'fallback:capetown',     itemLabel: 'Cape Town',               itemDescription: 'City at the southern tip of Africa', lat: -33.9249, lon: 18.4241 },
-        { item: 'fallback:hokkaido',     itemLabel: 'Hokkaido',                itemDescription: 'Northernmost main island of Japan', lat: 43.2203, lon: 142.8635 },
-        { item: 'fallback:patagonia',    itemLabel: 'Patagonia',               itemDescription: 'Vast wilderness region at the southern tip of South America', lat: -50.9423, lon: -72.9019 },
-        { item: 'fallback:varanasi',     itemLabel: 'Varanasi',                itemDescription: 'Ancient city on the Ganges river in northern India', lat: 25.3176, lon: 82.9739 },
-        { item: 'fallback:kilimanjaro',  itemLabel: 'Mount Kilimanjaro',       itemDescription: "Africa's highest peak in Tanzania", lat: -3.0674, lon: 37.3556 },
-        { item: 'fallback:marrakech',    itemLabel: 'Marrakech',               itemDescription: 'Imperial city in Morocco at the foot of the Atlas Mountains', lat: 31.6295, lon: -7.9811 },
-        { item: 'fallback:luangprabang', itemLabel: 'Luang Prabang',           itemDescription: 'Ancient royal capital on the Mekong River in Laos', lat: 19.8845, lon: 102.1347 },
-        { item: 'fallback:georgia',      itemLabel: 'Kazbegi',                 itemDescription: 'Mountain town in the Greater Caucasus, Georgia', lat: 42.6512, lon: 44.6374 },
-        { item: 'fallback:azores',       itemLabel: 'Azores',                  itemDescription: 'Volcanic archipelago in the mid-Atlantic', lat: 37.7412, lon: -25.6756 },
-        { item: 'fallback:queenstown',   itemLabel: 'Queenstown',              itemDescription: 'Town on the shores of Lake Wakatipu, New Zealand', lat: -45.0312, lon: 168.6626 },
-        { item: 'fallback:cappadocia',   itemLabel: 'Cappadocia',              itemDescription: 'Region in central Turkey known for its volcanic landscape', lat: 38.6431, lon: 34.8289 },
-        { item: 'fallback:banff',        itemLabel: 'Banff National Park',     itemDescription: 'Mountain park in the Canadian Rockies', lat: 51.4968, lon: -115.9281 },
-        { item: 'fallback:fjordnorway',  itemLabel: 'Geirangerfjord',          itemDescription: 'UNESCO-listed fjord in western Norway', lat: 62.1002, lon: 7.2059 },
-        { item: 'fallback:zanzibar',     itemLabel: 'Zanzibar',                itemDescription: 'Coral island off the coast of Tanzania', lat: -6.1659, lon: 39.2026 },
-        { item: 'fallback:antelope',     itemLabel: 'Antelope Canyon',         itemDescription: 'Slot canyon on Navajo land in Arizona, USA', lat: 36.8619, lon: -111.3743 },
-        { item: 'fallback:kerala',       itemLabel: 'Kerala Backwaters',       itemDescription: 'Network of canals, lakes and lagoons in southern India', lat: 9.4981, lon: 76.3388 },
-        { item: 'fallback:iceland',      itemLabel: 'Þingvellir',              itemDescription: 'Rift valley where the North American and Eurasian plates meet, Iceland', lat: 64.2559, lon: -21.1302 },
-        { item: 'fallback:mekong',       itemLabel: 'Mekong Delta',            itemDescription: 'River delta in southern Vietnam', lat: 10.0452, lon: 105.7469 },
-        { item: 'fallback:sahara',       itemLabel: 'Sahara Desert',           itemDescription: 'Vast hot desert spanning northern Africa', lat: 23.4162, lon: 25.6628 }
-    ];
 
     // Pop from pool immediately if available; fall back to hardcoded list if Wikidata
     // pool is still empty (e.g. on first round before SPARQL returns); poll otherwise.
