@@ -5,10 +5,10 @@ $(document).ready(function() {
     // Pre-fetched location pool. Filled in the background while the player is guessing
     // so that the next round starts instantly without waiting on a SPARQL round-trip.
     const locationPool = {
-        items: [],          // validated location objects ready to use
-        filling: false,     // true while a batch SPARQL request is in flight
-        TARGET: 3,          // keep at least this many ready
-        BATCH: 10           // fetch this many candidates per SPARQL request
+        items: [],      // validated location objects ready to use
+        filling: false, // true while a batch SPARQL request is in flight
+        TARGET: 3,      // keep at least this many ready
+        BATCH: 10       // candidates fetched per SPARQL request
     };
 
     // Game state
@@ -26,6 +26,10 @@ $(document).ready(function() {
     };
 
     initGame();
+
+    // ---------------------------------------------------------------------------
+    // Init
+    // ---------------------------------------------------------------------------
 
     function initGame() {
         gameState.score = 0;
@@ -59,7 +63,6 @@ $(document).ready(function() {
             if (gameState.userGuess) {
                 gameState.map.removeLayer(gameState.userGuess);
             }
-
             gameState.userGuess = L.marker(e.latlng, {
                 icon: L.divIcon({
                     className: 'guess-marker',
@@ -68,7 +71,6 @@ $(document).ready(function() {
                     iconAnchor: [12, 24]
                 })
             }).addTo(gameState.map);
-
             $("#guessBtn").prop("disabled", false);
         });
     }
@@ -77,7 +79,6 @@ $(document).ready(function() {
         const $progressBar = $('#progressBar');
         percentage = Math.max(0, Math.min(100, percentage));
         $progressBar.css('width', `${percentage}%`);
-
         if (percentage < 30) {
             $progressBar.css('background', 'linear-gradient(to right, #ed2213ff, #ff9800)');
         } else if (percentage < 70) {
@@ -115,34 +116,29 @@ $(document).ready(function() {
                         ?statement psv:P625 ?coords .
                         ?coords wikibase:geoLatitude ?lat .
                         ?coords wikibase:geoLongitude ?lon .
+                        FILTER(ABS(?lat) < 70)
                     } LIMIT ${locationPool.BATCH} OFFSET ${offset}
                 }
                 SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
             }`;
 
-        const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}&format=json`;
-
         $.ajax({
-            url: url,
+            url: `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}&format=json`,
             method: 'GET',
             dataType: 'json',
             headers: { 'Accept': 'application/json' },
             success: function(data) {
                 locationPool.filling = false;
                 if (!data.results || !data.results.bindings.length) {
-                    // Empty batch — try again after a short back-off.
                     setTimeout(refillLocationPool, 2000);
                     return;
                 }
-
                 for (const result of data.results.bindings) {
                     const lat = parseFloat(result.lat.value);
                     const lon = parseFloat(result.lon.value);
                     const itemId = result.item.value;
-
                     if (isNaN(lat) || isNaN(lon)) continue;
                     if (seenItems.has(itemId)) continue;
-
                     locationPool.items.push({
                         item: itemId,
                         itemLabel: result.itemLabel ? result.itemLabel.value : 'Unknown Location',
@@ -151,8 +147,6 @@ $(document).ready(function() {
                         lon: lon
                     });
                 }
-
-                // If still under target (all candidates were already seen), try again.
                 if (locationPool.items.length < locationPool.TARGET) {
                     setTimeout(refillLocationPool, 500);
                 }
@@ -169,13 +163,10 @@ $(document).ready(function() {
         if (locationPool.items.length > 0) {
             const loc = locationPool.items.shift();
             seenItems.add(loc.item);
-            // Kick off a background refill now that we consumed one.
             refillLocationPool();
             onReady(loc);
             return;
         }
-
-        // Pool empty — start filling and poll until a location arrives.
         refillLocationPool();
         const poll = setInterval(function() {
             if (locationPool.items.length > 0) {
@@ -213,7 +204,6 @@ $(document).ready(function() {
         $("#imageCounter").text("Loading...");
 
         if (locationPool.items.length > 0) {
-            // Instant start — no loading screen needed for the location step.
             showLoadingMessage("Loading images...");
         } else {
             showLoadingMessage("Finding an interesting location...");
@@ -265,39 +255,36 @@ $(document).ready(function() {
     // Image fetching
     // ---------------------------------------------------------------------------
 
-    // Categories whose presence in Commons metadata suggests geographic content.
-    const GEO_CATEGORY_TERMS = [
+    // Terms whose presence in Commons metadata suggests geographic/landscape content.
+    const GEO_TERMS = [
         'landscape', 'panorama', 'aerial', 'mountain', 'river', 'lake', 'coast',
         'valley', 'forest', 'desert', 'glacier', 'waterfall', 'canyon', 'plain',
         'island', 'bay', 'cape', 'beach', 'cliff', 'hill', 'volcano', 'geography',
         'natural', 'scenery', 'terrain', 'vegetation', 'wetland', 'estuary'
     ];
 
-    // Score an image for geographic relevance. Higher is better.
     function geoRelevanceScore(image) {
         const text = [image.title, image.description, image.categories].join(' ').toLowerCase();
         let score = 0;
-        for (const term of GEO_CATEGORY_TERMS) {
+        for (const term of GEO_TERMS) {
             if (text.includes(term)) score++;
         }
         return score;
     }
 
     function getImagesFromCommons(lat, lon, successCallback, errorCallback) {
-        // Fetch 50 candidates so we have enough to filter and rank.
-        const radiusMeters = 10000; // 10 km — wider net to catch landscape shots
+        // 10 km radius, 50 candidates — wide enough to find landscape shots.
         const url = [
             'https://commons.wikimedia.org/w/api.php',
             '?action=query&format=json&origin=*',
             '&generator=geosearch',
-            '&ggsprimary=all',
-            '&ggsnamespace=6',
-            `&ggsradius=${radiusMeters}`,
+            '&ggsprimary=all&ggsnamespace=6',
+            '&ggsradius=10000',
             `&ggscoord=${lat}|${lon}`,
             '&ggslimit=50',
             '&prop=imageinfo',
             '&iiprop=url|extmetadata|mediatype',
-            '&iiurlwidth=800'  // larger thumbnails for better visual quality
+            '&iiurlwidth=800'
         ].join('');
 
         $.ajax({
@@ -316,14 +303,14 @@ $(document).ready(function() {
 
                     const info = page.imageinfo[0];
 
-                    // Skip non-photographic files (SVG diagrams, PDF documents, audio, etc.)
+                    // Skip non-photographic files (SVG, PDF, audio, video, etc.)
                     if (info.mediatype && info.mediatype !== 'BITMAP') continue;
 
                     const metadata = info.extmetadata || {};
                     const categories = metadata.Categories ? metadata.Categories.value : '';
-
-                    // Skip images explicitly tagged as people portraits or logos.
                     const lowerCats = categories.toLowerCase();
+
+                    // Skip portraits, logos, flags — not useful for guessing geography.
                     if (lowerCats.includes('portrait') || lowerCats.includes('logo') ||
                         lowerCats.includes('coat of arms') || lowerCats.includes('flag of')) {
                         continue;
@@ -344,7 +331,7 @@ $(document).ready(function() {
                     return;
                 }
 
-                // Sort by geographic relevance score descending, take top 20.
+                // Sort by geographic relevance, take top 20.
                 candidates.sort((a, b) => geoRelevanceScore(b) - geoRelevanceScore(a));
                 successCallback(candidates.slice(0, 20));
             },
@@ -363,18 +350,16 @@ $(document).ready(function() {
             dataType: 'json',
             headers: { 'Accept': 'application/json' },
             success: function(data) {
-                if (!data.results || !data.results.bindings || data.results.bindings.length === 0) {
+                if (!data.results || !data.results.bindings || !data.results.bindings.length) {
                     successCallback([]);
                     return;
                 }
-
                 const images = data.results.bindings.map(item => ({
                     url: item.image.value.replace(/^http:/, 'https:'),
                     thumbUrl: item.image.value.replace(/^http:/, 'https:'),
                     title: item.image.value.split('/').pop(),
                     source: 'wikidata'
                 }));
-
                 successCallback(images);
             },
             error: function(xhr, status, error) {
@@ -406,13 +391,10 @@ $(document).ready(function() {
             $("#imageCounter").text("0 / 0");
             return;
         }
-
         gameState.currentImageIndex = Math.max(0, Math.min(index, gameState.images.length - 1));
-
         stopSlideshow();
 
         const $imageContainer = $("#imageContainer").removeClass("loading").empty();
-
         updateViewModeToggle();
 
         if (gameState.currentViewMode === 'slideshow') {
@@ -420,7 +402,6 @@ $(document).ready(function() {
         } else {
             setupGallery($imageContainer);
         }
-
         $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
     }
 
@@ -486,7 +467,6 @@ $(document).ready(function() {
         } else {
             $attribution.hide();
         }
-
         $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
     }
 
@@ -516,7 +496,6 @@ $(document).ready(function() {
                 $thumbnail.addClass('active');
                 $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
             });
-
             $gallery.append($thumbnail);
         });
 
@@ -536,7 +515,6 @@ $(document).ready(function() {
     // Scoring
     // ---------------------------------------------------------------------------
 
-    // Haversine formula — correctly uses both dLat and dLon.
     function calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371;
         const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -589,7 +567,7 @@ $(document).ready(function() {
             }
         ).addTo(gameState.map);
 
-        // Build popup safely to avoid XSS from Wikidata content.
+        // Build popup with .text() to avoid XSS from Wikidata strings.
         const $popupContent = $('<div style="text-align:center;"></div>');
         $('<h3 style="margin:0 0 5px 0;color:#2c3e50;"></h3>')
             .text(gameState.currentLocation.name)
@@ -597,7 +575,6 @@ $(document).ready(function() {
         $('<p style="margin:0;color:#7f8c8d;"></p>')
             .text(gameState.currentLocation.description || 'No description')
             .appendTo($popupContent);
-
         actualMarker.bindPopup($popupContent[0]).openPopup();
 
         L.polyline([
@@ -605,24 +582,22 @@ $(document).ready(function() {
             [userLatLng.lat, userLatLng.lng]
         ], { color: 'red' }).addTo(gameState.map);
 
-        const bounds = L.latLngBounds([
+        gameState.map.fitBounds(L.latLngBounds([
             [gameState.currentLocation.lat, gameState.currentLocation.lon],
             [userLatLng.lat, userLatLng.lng]
-        ]);
-        gameState.map.fitBounds(bounds, { padding: [50, 50] });
+        ]), { padding: [50, 50] });
 
         showResults(distance, score);
 
-        // Pre-fill the pool while the player reads the results screen.
+        // Pre-fill pool while the player reads the results screen.
         refillLocationPool();
     }
 
     function showResults(distance, score) {
-        const locationName = gameState.currentLocation.name || "Unknown Location";
-
-        // Populate result modal safely — use .text() for user-visible Wikidata strings.
+        // Populate result modal with .text() to avoid XSS from Wikidata strings.
         $("#resultDistance").empty();
-        $('<h2></h2>').text(locationName).appendTo("#resultDistance");
+        $('<h2></h2>').text(gameState.currentLocation.name || "Unknown Location")
+            .appendTo("#resultDistance");
         $('<div class="result-distance"></div>')
             .html(`Your guess was <strong>${distance.toFixed(1)} km</strong> away`)
             .appendTo("#resultDistance");
@@ -631,19 +606,12 @@ $(document).ready(function() {
             .appendTo("#resultDistance");
 
         let message;
-        if (distance < 1) {
-            message = "Incredible! Are you a wizard?";
-        } else if (distance < 10) {
-            message = "Amazing guess! You must know this place well.";
-        } else if (distance < 100) {
-            message = "Great job! You were very close.";
-        } else if (distance < 500) {
-            message = "Good guess! You were in the right area.";
-        } else if (distance < 2000) {
-            message = "Not bad! You were in the right region.";
-        } else {
-            message = "Better luck next time!";
-        }
+        if (distance < 1)         message = "Incredible! Are you a wizard?";
+        else if (distance < 10)   message = "Amazing guess! You must know this place well.";
+        else if (distance < 100)  message = "Great job! You were very close.";
+        else if (distance < 500)  message = "Good guess! You were in the right area.";
+        else if (distance < 2000) message = "Not bad! You were in the right region.";
+        else                      message = "Better luck next time!";
 
         $("#resultMessage").text(message);
         $("#resultModal").show();
@@ -675,7 +643,6 @@ $(document).ready(function() {
             if (gameState.images.length === 0) return;
             gameState.currentImageIndex =
                 (gameState.currentImageIndex - 1 + gameState.images.length) % gameState.images.length;
-
             if (gameState.currentViewMode === 'slideshow') {
                 updateSlideshowImage();
             } else {
@@ -689,7 +656,6 @@ $(document).ready(function() {
             if (gameState.images.length === 0) return;
             gameState.currentImageIndex =
                 (gameState.currentImageIndex + 1) % gameState.images.length;
-
             if (gameState.currentViewMode === 'slideshow') {
                 updateSlideshowImage();
             } else {
@@ -720,7 +686,7 @@ $(document).ready(function() {
         $(".game-area").html(`
             <div class="game-over-screen">
                 <h2>🎉 Game Complete! 🎊</h2>
-                <p>Your final score: <strong id="finalScore">${gameState.score}</strong></p>
+                <p>Your final score: <strong>${gameState.score}</strong></p>
                 <button id="restartBtn" class="next-round-btn">Play Again</button>
             </div>
         `);
@@ -730,7 +696,6 @@ $(document).ready(function() {
 
         $("#restartBtn").click(function() {
             stopSlideshow();
-
             $(".game-area").html(`
                 <div class="image-container" id="imageContainer">
                     <div class="loading">
@@ -755,7 +720,6 @@ $(document).ready(function() {
                 </div>
                 <div class="map-container" id="map"></div>
             `);
-
             initGame();
         });
     }
