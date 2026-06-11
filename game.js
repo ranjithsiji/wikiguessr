@@ -149,10 +149,9 @@ $(document).ready(function() {
             }`;
 
         $.ajax({
-            url: `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}&format=json`,
+            url: `proxy.php?endpoint=wikidata&q=${encodeURIComponent('query=' + encodeURIComponent(query) + '&format=json')}`,
             method: 'GET',
             dataType: 'json',
-            headers: { 'Accept': 'application/json' },
             success: function(data) {
                 locationPool.filling = false;
                 if (!data.results || !data.results.bindings.length) {
@@ -312,9 +311,8 @@ $(document).ready(function() {
 
     function getImagesFromCommons(lat, lon, successCallback, errorCallback) {
         // 10 km radius, 50 candidates — wide enough to find landscape shots.
-        const url = [
-            'https://commons.wikimedia.org/w/api.php',
-            '?action=query&format=json&origin=*',
+        const commonsParams = [
+            'action=query&format=json',
             '&generator=geosearch',
             '&ggsprimary=all&ggsnamespace=6',
             '&ggsradius=10000',
@@ -326,7 +324,7 @@ $(document).ready(function() {
         ].join('');
 
         $.ajax({
-            url: url,
+            url: `proxy.php?endpoint=commons&q=${encodeURIComponent(commonsParams)}`,
             dataType: 'json',
             success: function(data) {
                 if (!data.query || !data.query.pages) {
@@ -381,12 +379,9 @@ $(document).ready(function() {
 
     function getImagesFromWikidata(itemId, successCallback, errorCallback) {
         const query = `SELECT ?image WHERE { <${itemId}> wdt:P18 ?image. } LIMIT 10`;
-        const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}&format=json`;
-
         $.ajax({
-            url: url,
+            url: `proxy.php?endpoint=wikidata&q=${encodeURIComponent('query=' + encodeURIComponent(query) + '&format=json')}`,
             dataType: 'json',
-            headers: { 'Accept': 'application/json' },
             success: function(data) {
                 if (!data.results || !data.results.bindings || !data.results.bindings.length) {
                     successCallback([]);
