@@ -144,15 +144,21 @@ $(document).ready(function() {
         gameState.images = [];
         gameState.currentImageIndex = 0;
         gameState.currentViewMode = 'gallery';
+        gameState.slideshowPaused = false;
+
+        stopSlideshow();
+        $("#resultModal").hide();
 
         updateProgressBar(0);
         $("#progressContainer").show();
         $("#scoreDisplay").text(`Score: ${gameState.score}`);
         $("#roundDisplay").text(`Round: ${gameState.round}/${gameState.maxRounds}`);
 
+        // Bind delegated event listeners ONCE before kicking off the first round.
+        setupEventListeners();
+
         initMap();
         startNewRound();
-        setupEventListeners();
     }
 
     function initMap() {
@@ -804,14 +810,22 @@ $(document).ready(function() {
     // Event listeners
     // ---------------------------------------------------------------------------
 
+    // Use event delegation off document so handlers survive DOM rebuilds
+    // (game-area is replaced wholesale on Play Again — direct .click() bindings
+    // accumulate across restarts and fire multiple times per click).
     function setupEventListeners() {
-        $("#viewModeToggle").click(function() {
+        const $doc = $(document);
+
+        // Remove any prior delegated handlers in this namespace, then rebind once.
+        $doc.off('.wikiguessr');
+
+        $doc.on('click.wikiguessr', '#viewModeToggle', function() {
             stopSlideshow();
             gameState.currentViewMode = gameState.currentViewMode === 'slideshow' ? 'gallery' : 'slideshow';
             displayImage(gameState.currentImageIndex);
         });
 
-        $("#prevBtn").click(function() {
+        $doc.on('click.wikiguessr', '#prevBtn', function() {
             if (gameState.images.length === 0) return;
             gameState.currentImageIndex =
                 (gameState.currentImageIndex - 1 + gameState.images.length) % gameState.images.length;
@@ -824,7 +838,7 @@ $(document).ready(function() {
             $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
         });
 
-        $("#nextBtn").click(function() {
+        $doc.on('click.wikiguessr', '#nextBtn', function() {
             if (gameState.images.length === 0) return;
             gameState.currentImageIndex =
                 (gameState.currentImageIndex + 1) % gameState.images.length;
@@ -837,9 +851,9 @@ $(document).ready(function() {
             $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
         });
 
-        $("#guessBtn").click(submitGuess);
+        $doc.on('click.wikiguessr', '#guessBtn', submitGuess);
 
-        $("#nextRoundBtn").click(function() {
+        $doc.on('click.wikiguessr', '#nextRoundBtn', function() {
             $("#resultModal").hide();
             if (gameState.round < gameState.maxRounds) {
                 gameState.round++;
