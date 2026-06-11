@@ -53,21 +53,6 @@ h1 {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.image-slide {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0;
-    transition: opacity 0.5s ease;
-    background-size: cover;
-    background-position: center;
-}
-
-.image-slide.active {
-    opacity: 1;
-}
 
 .image-nav {
     display: flex;
@@ -152,13 +137,15 @@ h1 {
     cursor: not-allowed;
 }
 
-#progressbar {
-    margin-top: 20px;
-    height: 10px;
-}
-
-.ui-progressbar-value {
-    background-color: #3498db;
+.game-over-screen {
+    text-align: center;
+    padding: 40px;
+    border: 4px solid #ccc;
+    border-radius: 20px;
+    margin: 10px;
+    color: green;
+    font-size: 2.5em;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
 }
 
 .result-modal {
