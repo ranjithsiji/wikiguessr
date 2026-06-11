@@ -55,6 +55,84 @@ $(document).ready(function() {
     initGame();
 
     // ---------------------------------------------------------------------------
+    // Score history (localStorage)
+    // ---------------------------------------------------------------------------
+
+    const SCORES_KEY = 'wikiguessr_scores';
+    const MAX_SCORES = 20;
+
+    function saveScore(score) {
+        const history = loadScores();
+        history.unshift({ score: score, date: Date.now(), rounds: gameState.maxRounds });
+        if (history.length > MAX_SCORES) history.length = MAX_SCORES;
+        try { localStorage.setItem(SCORES_KEY, JSON.stringify(history)); } catch(e) {}
+    }
+
+    function loadScores() {
+        try { return JSON.parse(localStorage.getItem(SCORES_KEY) || '[]'); } catch(e) { return []; }
+    }
+
+    function clearScores() {
+        try { localStorage.removeItem(SCORES_KEY); } catch(e) {}
+    }
+
+    function formatDate(ts) {
+        const d = new Date(ts);
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}  ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function renderScoresPanel() {
+        const history = loadScores();
+        const $list = $('#scoresList').empty();
+
+        if (history.length === 0) {
+            $list.html('<p class="scores-empty">No games played yet.<br>Finish a game to record your score!</p>');
+            return;
+        }
+
+        // Sort by score descending to assign medals, but display in chronological reverse order (already is)
+        const sorted = history.slice().sort((a, b) => b.score - a.score);
+        const topThree = sorted.slice(0, 3).map(e => e.date);
+        const medals = ['🥇', '🥈', '🥉'];
+        const medalClass = ['gold', 'silver', 'bronze'];
+
+        history.forEach((entry, i) => {
+            const rank = topThree.indexOf(entry.date);
+            const medal = rank >= 0 ? medals[rank] : `#${i + 1}`;
+            const cls = rank >= 0 ? medalClass[rank] : '';
+            const $entry = $(`<div class="score-entry ${cls}"></div>`);
+            $entry.append($('<div class="score-rank"></div>').text(medal));
+            const $details = $('<div class="score-details"></div>');
+            $details.append($('<div class="score-value"></div>').text(`${entry.score.toLocaleString()} pts`));
+            $details.append($('<div class="score-date"></div>').text(formatDate(entry.date)));
+            $entry.append($details);
+            $list.append($entry);
+        });
+    }
+
+    function openScoresPanel() {
+        renderScoresPanel();
+        $('#scoresPanel').addClass('open').attr('aria-hidden', 'false');
+        $('#scoresOverlay').addClass('active');
+    }
+
+    function closeScoresPanel() {
+        $('#scoresPanel').removeClass('open').attr('aria-hidden', 'true');
+        $('#scoresOverlay').removeClass('active');
+    }
+
+    $('#scoresBtn').on('click', openScoresPanel);
+    $('#scoresPanelClose').on('click', closeScoresPanel);
+    $('#scoresOverlay').on('click', closeScoresPanel);
+    $('#scoresClear').on('click', function() {
+        if (confirm('Clear all score history?')) {
+            clearScores();
+            renderScoresPanel();
+        }
+    });
+
+    // ---------------------------------------------------------------------------
     // Init
     // ---------------------------------------------------------------------------
 
@@ -777,6 +855,7 @@ $(document).ready(function() {
     // ---------------------------------------------------------------------------
 
     function endGame() {
+        saveScore(gameState.score);
         updateProgressBar(100);
         $("#progressContainer").hide();
         $(".game-area").html(`
@@ -784,8 +863,13 @@ $(document).ready(function() {
                 <h2>🎉 Game Complete! 🎊</h2>
                 <p>Your final score: <strong>${gameState.score}</strong></p>
                 <button id="restartBtn" class="next-round-btn">Play Again</button>
+                <button id="endScoresBtn" class="scores-header-btn" style="margin-top:10px">
+                  <i class="fas fa-trophy"></i> View Scores
+                </button>
             </div>
         `);
+
+        $('#endScoresBtn').on('click', openScoresPanel);
 
         // Keep filling the pool so the next game starts instantly.
         refillLocationPool();

@@ -18,10 +18,26 @@
 
   <body>
     <header>
-      <div class="container">
+      <div class="container header-inner">
         <h1>🌍 Wiki Guessr - Guess the geolocation based on images</h1>
+        <button id="scoresBtn" class="scores-header-btn" aria-label="View high scores">
+          <i class="fas fa-trophy"></i> Scores
+        </button>
       </div>
     </header>
+
+    <!-- Scores sidebar (desktop) / modal (mobile) -->
+    <div id="scoresPanel" class="scores-panel" aria-hidden="true">
+      <div class="scores-panel-inner">
+        <div class="scores-panel-header">
+          <h3><i class="fas fa-trophy"></i> High Scores</h3>
+          <button id="scoresPanelClose" class="scores-close-btn" aria-label="Close scores">&times;</button>
+        </div>
+        <div id="scoresList" class="scores-list"></div>
+        <button id="scoresClear" class="scores-clear-btn">Clear History</button>
+      </div>
+    </div>
+    <div id="scoresOverlay" class="scores-overlay"></div>
 
     <div class="container">
       <div class="game-info">
