@@ -2,6 +2,15 @@ $(document).ready(function() {
     // Tracks item IDs seen across all games in this browser session to avoid repeats.
     const seenItems = new Set();
 
+    // Pre-fetched location pool. Filled in the background while the player is guessing
+    // so that the next round starts instantly without waiting on a SPARQL round-trip.
+    const locationPool = {
+        items: [],          // validated location objects ready to use
+        filling: false,     // true while a batch SPARQL request is in flight
+        TARGET: 3,          // keep at least this many ready
+        BATCH: 10           // fetch this many candidates per SPARQL request
+    };
+
     // Game state
     const gameState = {
         currentLocation: null,
@@ -85,11 +94,106 @@ $(document).ready(function() {
         }
     }
 
+    // ---------------------------------------------------------------------------
+    // Location pool — async pre-fetch
+    // ---------------------------------------------------------------------------
+
+    // Fetch a batch of SPARQL candidates and push valid, unseen ones into the pool.
+    // Does nothing if a fill is already in flight or the pool is already at target.
+    function refillLocationPool() {
+        if (locationPool.filling || locationPool.items.length >= locationPool.TARGET) return;
+        locationPool.filling = true;
+
+        const offset = Math.floor(Math.random() * 500000);
+        const query = `
+            SELECT ?item ?itemLabel ?itemDescription ?lat ?lon WHERE {
+                {
+                    SELECT ?item ?lat ?lon
+                    WHERE {
+                        ?item wdt:P18 [] .
+                        ?item p:P625 ?statement .
+                        ?statement psv:P625 ?coords .
+                        ?coords wikibase:geoLatitude ?lat .
+                        ?coords wikibase:geoLongitude ?lon .
+                    } LIMIT ${locationPool.BATCH} OFFSET ${offset}
+                }
+                SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+            }`;
+
+        const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}&format=json`;
+
+        $.ajax({
+            url: url,
+            method: 'GET',
+            dataType: 'json',
+            headers: { 'Accept': 'application/json' },
+            success: function(data) {
+                locationPool.filling = false;
+                if (!data.results || !data.results.bindings.length) {
+                    // Empty batch — try again after a short back-off.
+                    setTimeout(refillLocationPool, 2000);
+                    return;
+                }
+
+                for (const result of data.results.bindings) {
+                    const lat = parseFloat(result.lat.value);
+                    const lon = parseFloat(result.lon.value);
+                    const itemId = result.item.value;
+
+                    if (isNaN(lat) || isNaN(lon)) continue;
+                    if (seenItems.has(itemId)) continue;
+
+                    locationPool.items.push({
+                        item: itemId,
+                        itemLabel: result.itemLabel ? result.itemLabel.value : 'Unknown Location',
+                        itemDescription: result.itemDescription ? result.itemDescription.value : '',
+                        lat: lat,
+                        lon: lon
+                    });
+                }
+
+                // If still under target (all candidates were already seen), try again.
+                if (locationPool.items.length < locationPool.TARGET) {
+                    setTimeout(refillLocationPool, 500);
+                }
+            },
+            error: function() {
+                locationPool.filling = false;
+                setTimeout(refillLocationPool, 3000);
+            }
+        });
+    }
+
+    // Pop from pool immediately if available; otherwise wait and poll until one arrives.
+    function getNextLocation(onReady) {
+        if (locationPool.items.length > 0) {
+            const loc = locationPool.items.shift();
+            seenItems.add(loc.item);
+            // Kick off a background refill now that we consumed one.
+            refillLocationPool();
+            onReady(loc);
+            return;
+        }
+
+        // Pool empty — start filling and poll until a location arrives.
+        refillLocationPool();
+        const poll = setInterval(function() {
+            if (locationPool.items.length > 0) {
+                clearInterval(poll);
+                const loc = locationPool.items.shift();
+                seenItems.add(loc.item);
+                refillLocationPool();
+                onReady(loc);
+            }
+        }, 300);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Round management
+    // ---------------------------------------------------------------------------
+
     function startNewRound() {
         stopSlideshow();
-
-        // Preserve the user's chosen view mode across rounds — do NOT reset to gallery here.
-        // Images are always (re)loaded via displayImage() which calls setup for the active mode.
 
         gameState.userGuess = null;
         gameState.images = [];
@@ -102,171 +206,147 @@ $(document).ready(function() {
         });
 
         $("#guessBtn").prop("disabled", true);
-        showLoadingMessage("Finding an interesting location...");
 
         const progress = ((gameState.round - 1) / gameState.maxRounds) * 100;
         updateProgressBar(progress);
         $("#roundDisplay").text(`Round: ${gameState.round}/${gameState.maxRounds}`);
         $("#imageCounter").text("Loading...");
 
-        getRandomLocationWithImages(
-            function(locationData) {
-                gameState.currentLocation = {
-                    lat: parseFloat(locationData.lat),
-                    lon: parseFloat(locationData.lon),
-                    name: locationData.itemLabel,
-                    description: locationData.itemDescription,
-                    item: locationData.item
-                };
-
-                showLoadingMessage("Loading images from Wikimedia Commons...");
-
-                getImagesFromCommons(
-                    gameState.currentLocation.lat,
-                    gameState.currentLocation.lon,
-                    function(images) {
-                        gameState.images = images;
-                        displayImage(0);
-                    },
-                    function() {
-                        showLoadingMessage("Loading images from Wikidata...");
-                        getImagesFromWikidata(
-                            locationData.item,
-                            function(images) {
-                                if (images.length === 0) {
-                                    showError("No images found. Trying again...");
-                                    setTimeout(startNewRound, 1500);
-                                    return;
-                                }
-                                gameState.images = images;
-                                displayImage(0);
-                            },
-                            function(error) {
-                                showError("Failed to load images. Trying again...");
-                                console.error("Image loading error:", error);
-                                setTimeout(startNewRound, 1500);
-                            }
-                        );
-                    }
-                );
-            },
-            function(error) {
-                showError("Failed to load location. Trying again...");
-                console.error("Location loading error:", error);
-                setTimeout(startNewRound, 1500);
-            }
-        );
-    }
-
-    function getRandomLocationWithImages(successCallback, errorCallback, attempt) {
-        attempt = attempt || 1;
-        const maxAttempts = 5;
-
-        // Keep the offset well within the range where Wikidata reliably returns results.
-        const randomOffset = Math.floor(Math.random() * 500000);
-        const query = `
-            SELECT ?item ?itemLabel ?itemDescription ?lat ?lon ?photo WHERE {
-                {
-                    SELECT ?item ?photo ?lat ?lon
-                    WHERE {
-                        ?item wdt:P18 ?photo .
-                        ?item p:P625 ?statement .
-                        ?statement psv:P625 ?coords .
-                        ?coords wikibase:geoLatitude ?lat .
-                        ?coords wikibase:geoLongitude ?lon .
-                    } LIMIT 1 OFFSET ${randomOffset}
-                }
-                SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
-            }`;
-
-        const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}&format=json`;
-        showLoadingMessage("Loading an interesting location from Wikidata...");
-
-        $.ajax({
-            url: url,
-            method: 'GET',
-            dataType: 'json',
-            headers: { 'Accept': 'application/json' },
-            success: function(data) {
-                if (data.results && data.results.bindings.length > 0) {
-                    const result = data.results.bindings[0];
-                    const lat = parseFloat(result.lat.value);
-                    const lon = parseFloat(result.lon.value);
-
-                    // Validate coordinates are real numbers before proceeding.
-                    if (isNaN(lat) || isNaN(lon)) {
-                        retryOrFail();
-                        return;
-                    }
-
-                    // Skip items already played in this session.
-                    const itemId = result.item.value;
-                    if (seenItems.has(itemId)) {
-                        retryOrFail();
-                        return;
-                    }
-                    seenItems.add(itemId);
-
-                    successCallback({
-                        item: itemId,
-                        itemLabel: result.itemLabel ? result.itemLabel.value : 'Unknown Location',
-                        itemDescription: result.itemDescription ? result.itemDescription.value : '',
-                        image: result.photo.value,
-                        lon: lon,
-                        lat: lat
-                    });
-                } else {
-                    retryOrFail();
-                }
-            },
-            error: function(xhr, status, error) {
-                retryOrFail(new Error(`SPARQL query failed: ${status}`));
-            }
-        });
-
-        function retryOrFail(err) {
-            if (attempt < maxAttempts) {
-                console.warn(`SPARQL returned no results at offset ${randomOffset}, retrying (${attempt}/${maxAttempts})...`);
-                getRandomLocationWithImages(successCallback, errorCallback, attempt + 1);
-            } else {
-                errorCallback(err || new Error('No results after maximum retries'));
-            }
+        if (locationPool.items.length > 0) {
+            // Instant start — no loading screen needed for the location step.
+            showLoadingMessage("Loading images...");
+        } else {
+            showLoadingMessage("Finding an interesting location...");
         }
+
+        getNextLocation(function(locationData) {
+            gameState.currentLocation = {
+                lat: locationData.lat,
+                lon: locationData.lon,
+                name: locationData.itemLabel,
+                description: locationData.itemDescription,
+                item: locationData.item
+            };
+
+            showLoadingMessage("Loading images from Wikimedia Commons...");
+
+            getImagesFromCommons(
+                gameState.currentLocation.lat,
+                gameState.currentLocation.lon,
+                function(images) {
+                    gameState.images = images;
+                    displayImage(0);
+                },
+                function() {
+                    showLoadingMessage("Loading images from Wikidata...");
+                    getImagesFromWikidata(
+                        locationData.item,
+                        function(images) {
+                            if (images.length === 0) {
+                                showError("No images found. Trying again...");
+                                setTimeout(startNewRound, 1500);
+                                return;
+                            }
+                            gameState.images = images;
+                            displayImage(0);
+                        },
+                        function(error) {
+                            showError("Failed to load images. Trying again...");
+                            console.error("Image loading error:", error);
+                            setTimeout(startNewRound, 1500);
+                        }
+                    );
+                }
+            );
+        });
     }
 
-    function getImagesFromCommons(lat, lon, successCallback, errorCallback, radiusKm = 5, limit = 20) {
-        const radiusMeters = Math.round(radiusKm * 1000);
-        const url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=geosearch&ggsprimary=all&ggsnamespace=6&ggsradius=${radiusMeters}&ggscoord=${lat}|${lon}&ggslimit=${limit}&prop=imageinfo&iiprop=url|extmetadata|coordinates&iiurlwidth=500&origin=*`;
+    // ---------------------------------------------------------------------------
+    // Image fetching
+    // ---------------------------------------------------------------------------
+
+    // Categories whose presence in Commons metadata suggests geographic content.
+    const GEO_CATEGORY_TERMS = [
+        'landscape', 'panorama', 'aerial', 'mountain', 'river', 'lake', 'coast',
+        'valley', 'forest', 'desert', 'glacier', 'waterfall', 'canyon', 'plain',
+        'island', 'bay', 'cape', 'beach', 'cliff', 'hill', 'volcano', 'geography',
+        'natural', 'scenery', 'terrain', 'vegetation', 'wetland', 'estuary'
+    ];
+
+    // Score an image for geographic relevance. Higher is better.
+    function geoRelevanceScore(image) {
+        const text = [image.title, image.description, image.categories].join(' ').toLowerCase();
+        let score = 0;
+        for (const term of GEO_CATEGORY_TERMS) {
+            if (text.includes(term)) score++;
+        }
+        return score;
+    }
+
+    function getImagesFromCommons(lat, lon, successCallback, errorCallback) {
+        // Fetch 50 candidates so we have enough to filter and rank.
+        const radiusMeters = 10000; // 10 km — wider net to catch landscape shots
+        const url = [
+            'https://commons.wikimedia.org/w/api.php',
+            '?action=query&format=json&origin=*',
+            '&generator=geosearch',
+            '&ggsprimary=all',
+            '&ggsnamespace=6',
+            `&ggsradius=${radiusMeters}`,
+            `&ggscoord=${lat}|${lon}`,
+            '&ggslimit=50',
+            '&prop=imageinfo',
+            '&iiprop=url|extmetadata|mediatype',
+            '&iiurlwidth=800'  // larger thumbnails for better visual quality
+        ].join('');
 
         $.ajax({
             url: url,
             dataType: 'json',
             success: function(data) {
-                if (data.query && data.query.pages) {
-                    const images = [];
-                    for (const pageId in data.query.pages) {
-                        const page = data.query.pages[pageId];
-                        if (page.imageinfo && page.imageinfo[0]) {
-                            const imageInfo = page.imageinfo[0];
-                            const metadata = imageInfo.extmetadata || {};
-                            images.push({
-                                url: imageInfo.url,
-                                thumbUrl: imageInfo.thumburl || imageInfo.url,
-                                title: page.title.replace('File:', ''),
-                                description: metadata.ImageDescription ? metadata.ImageDescription.value : '',
-                                license: metadata.LicenseShortName ? metadata.LicenseShortName.value : ''
-                            });
-                        }
+                if (!data.query || !data.query.pages) {
+                    errorCallback();
+                    return;
+                }
+
+                const candidates = [];
+                for (const pageId in data.query.pages) {
+                    const page = data.query.pages[pageId];
+                    if (!page.imageinfo || !page.imageinfo[0]) continue;
+
+                    const info = page.imageinfo[0];
+
+                    // Skip non-photographic files (SVG diagrams, PDF documents, audio, etc.)
+                    if (info.mediatype && info.mediatype !== 'BITMAP') continue;
+
+                    const metadata = info.extmetadata || {};
+                    const categories = metadata.Categories ? metadata.Categories.value : '';
+
+                    // Skip images explicitly tagged as people portraits or logos.
+                    const lowerCats = categories.toLowerCase();
+                    if (lowerCats.includes('portrait') || lowerCats.includes('logo') ||
+                        lowerCats.includes('coat of arms') || lowerCats.includes('flag of')) {
+                        continue;
                     }
 
-                    if (images.length > 0) {
-                        successCallback(images);
-                    } else {
-                        errorCallback();
-                    }
-                } else {
-                    errorCallback();
+                    candidates.push({
+                        url: info.url,
+                        thumbUrl: info.thumburl || info.url,
+                        title: page.title.replace('File:', ''),
+                        description: metadata.ImageDescription ? metadata.ImageDescription.value : '',
+                        license: metadata.LicenseShortName ? metadata.LicenseShortName.value : '',
+                        categories: categories
+                    });
                 }
+
+                if (candidates.length === 0) {
+                    errorCallback();
+                    return;
+                }
+
+                // Sort by geographic relevance score descending, take top 20.
+                candidates.sort((a, b) => geoRelevanceScore(b) - geoRelevanceScore(a));
+                successCallback(candidates.slice(0, 20));
             },
             error: function() {
                 errorCallback();
@@ -302,6 +382,10 @@ $(document).ready(function() {
             }
         });
     }
+
+    // ---------------------------------------------------------------------------
+    // Display
+    // ---------------------------------------------------------------------------
 
     function showLoadingMessage(message) {
         $("#imageContainer")
@@ -448,6 +532,10 @@ $(document).ready(function() {
         }
     }
 
+    // ---------------------------------------------------------------------------
+    // Scoring
+    // ---------------------------------------------------------------------------
+
     // Haversine formula — correctly uses both dLat and dLon.
     function calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371;
@@ -467,6 +555,10 @@ $(document).ready(function() {
         if (distance >= 20000) return 0;
         return Math.round(maxScore * Math.exp(-distance / decayDistance));
     }
+
+    // ---------------------------------------------------------------------------
+    // Guess submission & results
+    // ---------------------------------------------------------------------------
 
     function submitGuess() {
         if (!gameState.userGuess || !gameState.currentLocation) return;
@@ -520,6 +612,9 @@ $(document).ready(function() {
         gameState.map.fitBounds(bounds, { padding: [50, 50] });
 
         showResults(distance, score);
+
+        // Pre-fill the pool while the player reads the results screen.
+        refillLocationPool();
     }
 
     function showResults(distance, score) {
@@ -564,6 +659,10 @@ $(document).ready(function() {
             .delay(1500)
             .fadeOut(500, function() { $(this).remove(); });
     }
+
+    // ---------------------------------------------------------------------------
+    // Event listeners
+    // ---------------------------------------------------------------------------
 
     function setupEventListeners() {
         $("#viewModeToggle").click(function() {
@@ -613,6 +712,10 @@ $(document).ready(function() {
         });
     }
 
+    // ---------------------------------------------------------------------------
+    // End game / restart
+    // ---------------------------------------------------------------------------
+
     function endGame() {
         $(".game-area").html(`
             <div class="game-over-screen">
@@ -621,6 +724,9 @@ $(document).ready(function() {
                 <button id="restartBtn" class="next-round-btn">Play Again</button>
             </div>
         `);
+
+        // Keep filling the pool so the next game starts instantly.
+        refillLocationPool();
 
         $("#restartBtn").click(function() {
             stopSlideshow();
