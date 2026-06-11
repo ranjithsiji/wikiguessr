@@ -9,15 +9,13 @@ $(document).ready(function() {
         map: null,
         round: 1,
         maxRounds: 5,
-        currentViewMode: 'gallery', // or 'slideshow'
+        currentViewMode: 'gallery', // 'gallery' or 'slideshow'
         slideshowInterval: null
     };
-    
-    // Initialize the game
+
     initGame();
-    
+
     function initGame() {
-        // Reset game state completely
         gameState.score = 0;
         gameState.round = 1;
         gameState.currentLocation = null;
@@ -25,41 +23,31 @@ $(document).ready(function() {
         gameState.images = [];
         gameState.currentImageIndex = 0;
         gameState.currentViewMode = 'gallery';
-        
-        // Initialize progress bar to 0
+
         updateProgressBar(0);
-        
-        // Update displays
         $("#scoreDisplay").text(`Score: ${gameState.score}`);
         $("#roundDisplay").text(`Round: ${gameState.round}/${gameState.maxRounds}`);
-        
-        // Initialize map
+
         initMap();
-        
-        // Start first round
         startNewRound();
-        
-        // Set up event listeners
         setupEventListeners();
     }
-    
+
     function initMap() {
-        // Clear existing map if it exists
         if (gameState.map) {
             gameState.map.remove();
         }
-        
+
         gameState.map = L.map('map').setView([0, 0], 2);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(gameState.map);
-        
-        // Handle map clicks
+
         gameState.map.on('click', function(e) {
             if (gameState.userGuess) {
                 gameState.map.removeLayer(gameState.userGuess);
             }
-            
+
             gameState.userGuess = L.marker(e.latlng, {
                 icon: L.divIcon({
                     className: 'guess-marker',
@@ -68,22 +56,16 @@ $(document).ready(function() {
                     iconAnchor: [12, 24]
                 })
             }).addTo(gameState.map);
-            
+
             $("#guessBtn").prop("disabled", false);
         });
     }
-    
-    // Update progress bar with jQuery
+
     function updateProgressBar(percentage) {
         const $progressBar = $('#progressBar');
-        
-        // Ensure percentage is between 0 and 100
         percentage = Math.max(0, Math.min(100, percentage));
-        
-        // Update width and text
         $progressBar.css('width', `${percentage}%`);
-        
-        // Change color based on percentage
+
         if (percentage < 30) {
             $progressBar.css('background', 'linear-gradient(to right, #ed2213ff, #ff9800)');
         } else if (percentage < 70) {
@@ -93,77 +75,58 @@ $(document).ready(function() {
         }
     }
 
-    function startNewRound() {
-        // CRITICAL FIX: Force gallery mode before loading new images to prevent NaN issues
-        // Clear any existing slideshow interval first
+    function stopSlideshow() {
         if (gameState.slideshowInterval) {
             clearInterval(gameState.slideshowInterval);
             gameState.slideshowInterval = null;
         }
-        
-        // Force gallery mode for new round loading
-        gameState.currentViewMode = 'gallery';
-        
-        // Reset round state
+    }
+
+    function startNewRound() {
+        stopSlideshow();
+
+        // Preserve the user's chosen view mode across rounds — do NOT reset to gallery here.
+        // Images are always (re)loaded via displayImage() which calls setup for the active mode.
+
         gameState.userGuess = null;
         gameState.images = [];
         gameState.currentImageIndex = 0;
-        
-        // Clear previous markers and lines
+
         gameState.map.eachLayer(layer => {
             if (layer instanceof L.Marker || layer instanceof L.Polyline) {
                 gameState.map.removeLayer(layer);
             }
         });
-        
-        // Disable guess button
-        $("#guessBtn").prop("disabled", true);
-        
-        // Show initial loading state
-        showLoadingMessage("Finding an interesting location...");        
 
-        // Update progress bar - fix the calculation
+        $("#guessBtn").prop("disabled", true);
+        showLoadingMessage("Finding an interesting location...");
+
         const progress = ((gameState.round - 1) / gameState.maxRounds) * 100;
         updateProgressBar(progress);
-        
-        // Update round display
         $("#roundDisplay").text(`Round: ${gameState.round}/${gameState.maxRounds}`);
-        
-        // Reset image counter to show loading state
         $("#imageCounter").text("Loading...");
-        
-        // Get a random location with images
+
         getRandomLocationWithImages(
             function(locationData) {
-                // Success callback
                 gameState.currentLocation = {
                     lat: parseFloat(locationData.lat),
                     lon: parseFloat(locationData.lon),
-                    name: locationData.itemLabel,  // This comes from itemLabel
+                    name: locationData.itemLabel,
                     description: locationData.itemDescription,
                     item: locationData.item
                 };
-                
-                // Show loading message for images
+
                 showLoadingMessage("Loading images from Wikimedia Commons...");
 
-                // First try to get images from Wikimedia Commons
                 getImagesFromCommons(
                     gameState.currentLocation.lat,
                     gameState.currentLocation.lon,
                     function(images) {
-                        if (images.length === 0) {
-                            showLoadingMessage("No Commons images found. Trying Wikidata...");
-                            throw new Error('No Commons images found');
-                        }
                         gameState.images = images;
                         displayImage(0);
-                        //gameState.map.setView([gameState.currentLocation.lat, gameState.currentLocation.lon], 10);
                     },
-                    function () {
-                        // Fall back to Wikidata images if Commons fails
+                    function() {
                         showLoadingMessage("Loading images from Wikidata...");
-                        // Fall back to Wikidata images if Commons fails
                         getImagesFromWikidata(
                             locationData.item,
                             function(images) {
@@ -174,7 +137,6 @@ $(document).ready(function() {
                                 }
                                 gameState.images = images;
                                 displayImage(0);
-                                gameState.map.setView([gameState.currentLocation.lat, gameState.currentLocation.lon], 10);
                             },
                             function(error) {
                                 showError("Failed to load images. Trying again...");
@@ -186,86 +148,96 @@ $(document).ready(function() {
                 );
             },
             function(error) {
-                // Error callback
                 showError("Failed to load location. Trying again...");
                 console.error("Location loading error:", error);
                 setTimeout(startNewRound, 1500);
             }
         );
     }
-    
-    function getRandomLocationWithImages(successCallback, errorCallback) {
-        const randomOffset = Math.floor(Math.random() * 1000000);
+
+    function getRandomLocationWithImages(successCallback, errorCallback, attempt) {
+        attempt = attempt || 1;
+        const maxAttempts = 5;
+
+        // Keep the offset well within the range where Wikidata reliably returns results.
+        const randomOffset = Math.floor(Math.random() * 500000);
         const query = `
-            SELECT ?item ?itemLabel ?itemDescription ?lat ?lon ?photo WHERE { 
-                { 
+            SELECT ?item ?itemLabel ?itemDescription ?lat ?lon ?photo WHERE {
+                {
                     SELECT ?item ?photo ?lat ?lon
-                    WHERE { 
-                        ?item wdt:P18 ?photo .  
-                        ?item p:P625 ?statement . 
-                        ?statement psv:P625 ?coords . 
-                        ?coords wikibase:geoLatitude ?lat . 
-                        ?coords wikibase:geoLongitude ?lon . 
+                    WHERE {
+                        ?item wdt:P18 ?photo .
+                        ?item p:P625 ?statement .
+                        ?statement psv:P625 ?coords .
+                        ?coords wikibase:geoLatitude ?lat .
+                        ?coords wikibase:geoLongitude ?lon .
                     } LIMIT 1 OFFSET ${randomOffset}
-                } 
-                SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } 
+                }
+                SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
             }`;
-        
+
         const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}&format=json`;
-        //Update message that we are running the SPARQL Querry on Wikidata.
-        showLoadingMessage("Loading an Interesting location from Wikidata...");
+        showLoadingMessage("Loading an interesting location from Wikidata...");
+
         $.ajax({
             url: url,
             method: 'GET',
             dataType: 'json',
-            headers: {
-                'Accept': 'application/json',
-            },
+            headers: { 'Accept': 'application/json' },
             success: function(data) {
-                if (data.results.bindings.length > 0) {
+                if (data.results && data.results.bindings.length > 0) {
                     const result = data.results.bindings[0];
                     const lat = parseFloat(result.lat.value);
                     const lon = parseFloat(result.lon.value);
-                    const label = result.itemLabel.value;
-                    console.log(result);
+
+                    // Validate coordinates are real numbers before proceeding.
+                    if (isNaN(lat) || isNaN(lon)) {
+                        retryOrFail();
+                        return;
+                    }
+
                     successCallback({
                         item: result.item.value,
-                        itemLabel: label,
-                        itemDescription: result.itemDescription.value,
+                        itemLabel: result.itemLabel ? result.itemLabel.value : 'Unknown Location',
+                        itemDescription: result.itemDescription ? result.itemDescription.value : '',
                         image: result.photo.value,
                         lon: lon,
-                        lat: lat,
-                        countryLabel: result.countryLabel?.value || ''  // Include country if available
+                        lat: lat
                     });
                 } else {
-                    errorCallback(new Error('No results from SPARQL query'));
-                    return;
+                    retryOrFail();
                 }
             },
             error: function(xhr, status, error) {
-                errorCallback(new Error(`SPARQL query failed: ${status}`));
+                retryOrFail(new Error(`SPARQL query failed: ${status}`));
             }
         });
+
+        function retryOrFail(err) {
+            if (attempt < maxAttempts) {
+                console.warn(`SPARQL returned no results at offset ${randomOffset}, retrying (${attempt}/${maxAttempts})...`);
+                getRandomLocationWithImages(successCallback, errorCallback, attempt + 1);
+            } else {
+                errorCallback(err || new Error('No results after maximum retries'));
+            }
+        }
     }
-    
+
     function getImagesFromCommons(lat, lon, successCallback, errorCallback, radiusKm = 5, limit = 20) {
         const radiusMeters = Math.round(radiusKm * 1000);
         const url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=geosearch&ggsprimary=all&ggsnamespace=6&ggsradius=${radiusMeters}&ggscoord=${lat}|${lon}&ggslimit=${limit}&prop=imageinfo&iiprop=url|extmetadata|coordinates&iiurlwidth=500&origin=*`;
-        
+
         $.ajax({
             url: url,
             dataType: 'json',
             success: function(data) {
                 if (data.query && data.query.pages) {
                     const images = [];
-                    const pages = data.query.pages;
-                    
-                    for (const pageId in pages) {
-                        const page = pages[pageId];
+                    for (const pageId in data.query.pages) {
+                        const page = data.query.pages[pageId];
                         if (page.imageinfo && page.imageinfo[0]) {
                             const imageInfo = page.imageinfo[0];
                             const metadata = imageInfo.extmetadata || {};
-                            
                             images.push({
                                 url: imageInfo.url,
                                 thumbUrl: imageInfo.thumburl || imageInfo.url,
@@ -275,7 +247,7 @@ $(document).ready(function() {
                             });
                         }
                     }
-                    
+
                     if (images.length > 0) {
                         successCallback(images);
                     } else {
@@ -290,32 +262,28 @@ $(document).ready(function() {
             }
         });
     }
-    
+
     function getImagesFromWikidata(itemId, successCallback, errorCallback) {
         const query = `SELECT ?image WHERE { <${itemId}> wdt:P18 ?image. } LIMIT 10`;
         const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}&format=json`;
-        
+
         $.ajax({
             url: url,
             dataType: 'json',
-            headers: {
-                'Accept': 'application/json',
-                'User-Agent': 'WikidataGuessr/1.0'
-            },
+            headers: { 'Accept': 'application/json' },
             success: function(data) {
                 if (!data.results || !data.results.bindings || data.results.bindings.length === 0) {
                     successCallback([]);
                     return;
                 }
-                
-                const images = data.results.bindings.map(item => {
-                    return {
-                        url: item.image.value.replace(/^http:/, 'https:'),
-                        title: item.image.value.split('/').pop(),
-                        source: 'wikidata'
-                    };
-                });
-                
+
+                const images = data.results.bindings.map(item => ({
+                    url: item.image.value.replace(/^http:/, 'https:'),
+                    thumbUrl: item.image.value.replace(/^http:/, 'https:'),
+                    title: item.image.value.split('/').pop(),
+                    source: 'wikidata'
+                }));
+
                 successCallback(images);
             },
             error: function(xhr, status, error) {
@@ -323,7 +291,7 @@ $(document).ready(function() {
             }
         });
     }
-    
+
     function showLoadingMessage(message) {
         $("#imageContainer")
             .addClass("loading")
@@ -337,28 +305,19 @@ $(document).ready(function() {
                 </div>
             `);
     }
-    
+
     function displayImage(index) {
         if (gameState.images.length === 0) {
             $("#imageCounter").text("0 / 0");
             return;
         }
 
-        // Ensure index is valid
         gameState.currentImageIndex = Math.max(0, Math.min(index, gameState.images.length - 1));
-        
-        // Clear any existing slideshow interval
-        if (gameState.slideshowInterval) {
-            clearInterval(gameState.slideshowInterval);
-            gameState.slideshowInterval = null;
-        }
 
-        // Remove loading state
-        const $imageContainer = $("#imageContainer")
-            .removeClass("loading")
-            .empty();
+        stopSlideshow();
 
-        // Update view mode toggle button
+        const $imageContainer = $("#imageContainer").removeClass("loading").empty();
+
         updateViewModeToggle();
 
         if (gameState.currentViewMode === 'slideshow') {
@@ -367,52 +326,39 @@ $(document).ready(function() {
             setupGallery($imageContainer);
         }
 
-        // Update image counter AFTER images are loaded
         $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
     }
-    
+
     function setupSlideshow($container) {
-        // Additional safety check to ensure we have images
         if (gameState.images.length === 0) {
             $container.html('<div class="no-images">No images available</div>');
             return;
         }
-        
-        // Create slideshow container
+
         const $slideshow = $('<div class="slideshow-container"></div>');
-        
-        // Create single slide
         const $slide = $('<div class="slideshow-slide"></div>');
         const currentImage = gameState.images[gameState.currentImageIndex];
-        
-        // Create image element
+
         const $img = $('<img>')
             .attr('src', currentImage.thumbUrl || currentImage.url)
             .attr('alt', currentImage.title || 'Location image');
-        
-        // Add class based on image orientation
+
         const img = new Image();
         img.onload = function() {
-            if (this.width > this.height) {
-                $img.addClass('landscape');
-            } else {
-                $img.addClass('portrait');
-            }
+            $img.addClass(this.width > this.height ? 'landscape' : 'portrait');
         };
         img.src = currentImage.thumbUrl || currentImage.url;
-        
-        // Add attribution if available
+
         if (currentImage.license) {
-            const $attribution = $('<div class="image-attribution"></div>')
-                .text(`License: ${currentImage.license}`);
-            $slide.append($attribution);
+            $slide.append(
+                $('<div class="image-attribution"></div>').text(`License: ${currentImage.license}`)
+            );
         }
-        
+
         $slide.append($img);
         $slideshow.append($slide);
         $container.append($slideshow);
-        
-        // Start slideshow autoplay only if we have valid images
+
         if (gameState.images.length > 1) {
             gameState.slideshowInterval = setInterval(() => {
                 gameState.currentImageIndex = (gameState.currentImageIndex + 1) % gameState.images.length;
@@ -423,76 +369,62 @@ $(document).ready(function() {
 
     function updateSlideshowImage() {
         if (gameState.images.length === 0) return;
-        
+
         const currentImage = gameState.images[gameState.currentImageIndex];
-        const $slideshow = $("#imageContainer .slideshow-container");
-        const $img = $slideshow.find('img');
-        
-        // Update image source
+        const $img = $("#imageContainer .slideshow-container img");
+
         $img.attr({
-            'src': currentImage.thumbUrl || currentImage.url,
-            'alt': currentImage.title || 'Location image'
+            src: currentImage.thumbUrl || currentImage.url,
+            alt: currentImage.title || 'Location image'
         });
-        
-        // Update image class based on orientation
+
         const img = new Image();
         img.onload = function() {
-            $img.removeClass('landscape portrait');
-            if (this.width > this.height) {
-                $img.addClass('landscape');
-            } else {
-                $img.addClass('portrait');
-            }
+            $img.removeClass('landscape portrait')
+                .addClass(this.width > this.height ? 'landscape' : 'portrait');
         };
         img.src = currentImage.thumbUrl || currentImage.url;
-        
-        // Update attribution
-        const $attribution = $slideshow.find('.image-attribution');
+
+        const $attribution = $("#imageContainer .slideshow-container .image-attribution");
         if (currentImage.license) {
             $attribution.text(`License: ${currentImage.license}`).show();
         } else {
             $attribution.hide();
         }
-        
-        // Update counter
+
         $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
     }
 
     function setupGallery($container) {
-        // Ensure we have images before setting up gallery
         if (gameState.images.length === 0) {
             $container.html('<div class="no-images">No images available</div>');
             return;
         }
-        
-        // Create gallery container
+
         const $gallery = $('<div class="gallery-container"></div>');
-        
-        // Create all thumbnails
+
         gameState.images.forEach((image, index) => {
             const $thumbnail = $('<div class="gallery-thumbnail"></div>')
                 .toggleClass('active', index === gameState.currentImageIndex);
-            
+
             const $img = $('<img>')
                 .attr('src', image.thumbUrl || image.url)
                 .attr('alt', image.title || 'Location image')
                 .on('error', function() {
-                    // If thumbnail fails, try the full URL
                     $(this).attr('src', image.url);
                 });
-            
+
             $thumbnail.append($img);
             $thumbnail.click(() => {
                 gameState.currentImageIndex = index;
                 $gallery.find('.gallery-thumbnail').removeClass('active');
                 $thumbnail.addClass('active');
-                // Update counter when thumbnail is clicked
                 $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
             });
-            
+
             $gallery.append($thumbnail);
         });
-        
+
         $container.append($gallery);
     }
 
@@ -504,34 +436,33 @@ $(document).ready(function() {
             $toggle.html('<i class="fas fa-film"></i> Slideshow View');
         }
     }
-    
+
+    // Haversine formula — correctly uses both dLat and dLon.
     function calculateDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371; // Earth's radius in km
+        const R = 6371;
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = 
-            Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-            Math.sin(dLat/2) * Math.sin(dLat/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
     }
-    
+
     function calculateScore(distance) {
         const maxScore = 5000;
         const decayDistance = 2000;
-        
         if (distance >= 20000) return 0;
-        
         return Math.round(maxScore * Math.exp(-distance / decayDistance));
     }
-    
+
     function submitGuess() {
         if (!gameState.userGuess || !gameState.currentLocation) return;
-        
-        // Clear the image container
+
+        stopSlideshow();
         $("#imageContainer").empty();
-        
+
         const userLatLng = gameState.userGuess.getLatLng();
         const distance = calculateDistance(
             gameState.currentLocation.lat,
@@ -539,67 +470,61 @@ $(document).ready(function() {
             userLatLng.lat,
             userLatLng.lng
         );
-        
+
         const score = calculateScore(distance);
         gameState.score += score;
-        
-        // Show the actual location on the map
-        const actualMarker = L.marker([gameState.currentLocation.lat, gameState.currentLocation.lon], {
-            icon: L.divIcon({
-                className: 'actual-marker',
-                html: '<i class="fas fa-map-marker-alt" style="color: green; font-size: 24px;"></i>',
-                iconSize: [24, 24],
-                iconAnchor: [12, 24]
-            })
-        }).addTo(gameState.map);
-        
-        // Create a more detailed popup with location name and country
-        const popupContent = `
-            <div style="text-align: center;">
-                <h3 style="margin: 0 0 5px 0; color: #2c3e50;">${gameState.currentLocation.name}</h3>
-                <p style="margin: 0; color: #7f8c8d;">${gameState.currentLocation.description || 'No description'}</p>
-            </div>
-        `;
-        
-        actualMarker.bindPopup(popupContent).openPopup();
-        
-        // Draw a line between the guess and actual location
+
+        const actualMarker = L.marker(
+            [gameState.currentLocation.lat, gameState.currentLocation.lon],
+            {
+                icon: L.divIcon({
+                    className: 'actual-marker',
+                    html: '<i class="fas fa-map-marker-alt" style="color: green; font-size: 24px;"></i>',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 24]
+                })
+            }
+        ).addTo(gameState.map);
+
+        // Build popup safely to avoid XSS from Wikidata content.
+        const $popupContent = $('<div style="text-align:center;"></div>');
+        $('<h3 style="margin:0 0 5px 0;color:#2c3e50;"></h3>')
+            .text(gameState.currentLocation.name)
+            .appendTo($popupContent);
+        $('<p style="margin:0;color:#7f8c8d;"></p>')
+            .text(gameState.currentLocation.description || 'No description')
+            .appendTo($popupContent);
+
+        actualMarker.bindPopup($popupContent[0]).openPopup();
+
         L.polyline([
             [gameState.currentLocation.lat, gameState.currentLocation.lon],
             [userLatLng.lat, userLatLng.lng]
         ], { color: 'red' }).addTo(gameState.map);
-        
-        // Zoom to show both points
+
         const bounds = L.latLngBounds([
             [gameState.currentLocation.lat, gameState.currentLocation.lon],
             [userLatLng.lat, userLatLng.lng]
         ]);
         gameState.map.fitBounds(bounds, { padding: [50, 50] });
-        
-        // Show results with location name
+
         showResults(distance, score);
     }
-    
+
     function showResults(distance, score) {
-        // Get the location name from gameState.currentLocation.name (which comes from itemLabel)
         const locationName = gameState.currentLocation.name || "Unknown Location";
-        
-        // Create the result HTML with the location name
-        const resultHTML = `
-            <h2>${locationName}</h2>
-            <div class="result-distance">
-                Your guess was <strong>${distance.toFixed(1)} km</strong> away
-            </div>
-            <div class="result-score">
-                +${score} points
-            </div>
-        `;
-        
-        // Update the modal content
-        $("#resultDistance").html(resultHTML);
-        
-        // Add a fun message based on distance
-        let message = "";
+
+        // Populate result modal safely — use .text() for user-visible Wikidata strings.
+        $("#resultDistance").empty();
+        $('<h2></h2>').text(locationName).appendTo("#resultDistance");
+        $('<div class="result-distance"></div>')
+            .html(`Your guess was <strong>${distance.toFixed(1)} km</strong> away`)
+            .appendTo("#resultDistance");
+        $('<div class="result-score"></div>')
+            .text(`+${score} points`)
+            .appendTo("#resultDistance");
+
+        let message;
         if (distance < 1) {
             message = "Incredible! Are you a wizard?";
         } else if (distance < 10) {
@@ -613,13 +538,12 @@ $(document).ready(function() {
         } else {
             message = "Better luck next time!";
         }
-        
+
         $("#resultMessage").text(message);
         $("#resultModal").show();
         $("#scoreDisplay").text(`Score: ${gameState.score}`);
     }
 
-    
     function showError(message) {
         $(".error-message").remove();
         $("<div>")
@@ -627,102 +551,76 @@ $(document).ready(function() {
             .text(message)
             .insertAfter("#imageContainer")
             .delay(1500)
-            .fadeOut(500, function() {
-                $(this).remove();
-            });
+            .fadeOut(500, function() { $(this).remove(); });
     }
-    
+
     function setupEventListeners() {
         $("#viewModeToggle").click(function() {
-            if (gameState.slideshowInterval) {
-                clearInterval(gameState.slideshowInterval);
-                gameState.slideshowInterval = null;
-            }
-            
+            stopSlideshow();
             gameState.currentViewMode = gameState.currentViewMode === 'slideshow' ? 'gallery' : 'slideshow';
             displayImage(gameState.currentImageIndex);
         });
-        
-        // Image navigation - loop continuously
+
         $("#prevBtn").click(function() {
             if (gameState.images.length === 0) return;
-            
-            gameState.currentImageIndex = (gameState.currentImageIndex - 1 + gameState.images.length) % gameState.images.length;
-            
+            gameState.currentImageIndex =
+                (gameState.currentImageIndex - 1 + gameState.images.length) % gameState.images.length;
+
             if (gameState.currentViewMode === 'slideshow') {
                 updateSlideshowImage();
             } else {
                 $("#imageContainer .gallery-thumbnail").removeClass('active')
                     .eq(gameState.currentImageIndex).addClass('active');
             }
-            
             $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
         });
 
         $("#nextBtn").click(function() {
             if (gameState.images.length === 0) return;
-            
-            gameState.currentImageIndex = (gameState.currentImageIndex + 1) % gameState.images.length;
-            
+            gameState.currentImageIndex =
+                (gameState.currentImageIndex + 1) % gameState.images.length;
+
             if (gameState.currentViewMode === 'slideshow') {
                 updateSlideshowImage();
             } else {
                 $("#imageContainer .gallery-thumbnail").removeClass('active')
                     .eq(gameState.currentImageIndex).addClass('active');
             }
-            
             $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
         });
 
-        // Guess button
         $("#guessBtn").click(submitGuess);
-        
-        // Next round button
+
         $("#nextRoundBtn").click(function() {
             $("#resultModal").hide();
-            
             if (gameState.round < gameState.maxRounds) {
                 gameState.round++;
                 startNewRound();
             } else {
-                // Game over
                 endGame();
             }
         });
     }
-    
+
     function endGame() {
         $(".game-area").html(`
-            <div style="text-align: center; padding: 40px; border:4px solid #ccc; border-radious:20px;margin:10px;color:green; font-size:2.5em; box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);">
+            <div class="game-over-screen">
                 <h2>🎉 Game Complete! 🎊</h2>
-                <p style="font-size: 1.5em;">🥳 Your final score: <strong>${gameState.score}</strong></p>
-                <button id="restartBtn" class="next-round-btn" style="margin-top: 20px;">Play Again</button>
+                <p>Your final score: <strong id="finalScore">${gameState.score}</strong></p>
+                <button id="restartBtn" class="next-round-btn">Play Again</button>
             </div>
         `);
-        
+
         $("#restartBtn").click(function() {
-            // Reset game completely
-            gameState.score = 0;
-            gameState.round = 1;
-            gameState.currentLocation = null;
-            gameState.userGuess = null;
-            gameState.images = [];
-            gameState.currentImageIndex = 0;
-            gameState.currentViewMode = 'gallery';
-            
-            if (gameState.slideshowInterval) {
-                clearInterval(gameState.slideshowInterval);
-                gameState.slideshowInterval = null;
-            }
-            
-            // Restore the original game area HTML
+            stopSlideshow();
+
             $(".game-area").html(`
                 <div class="image-container" id="imageContainer">
                     <div class="loading">
                         <i class="fas fa-spinner loading-spinner"></i> Loading game...
                     </div>
                 </div>
-                
+
                 <div class="image-nav">
                     <button class="nav-btn" id="prevBtn">
                         <i class="fas fa-arrow-left"></i> Previous
@@ -733,15 +631,14 @@ $(document).ready(function() {
                     </button>
                     <button class="view-mode-toggle" id="viewModeToggle"></button>
                 </div>
-                
+
                 <div class="guess-controls">
                     <p>Click on the map below to mark your guess.</p>
                     <button class="guess-btn" id="guessBtn" disabled>Make Guess</button>
                 </div>
                 <div class="map-container" id="map"></div>
             `);
-            
-            // Reinitialize the complete game
+
             initGame();
         });
     }
