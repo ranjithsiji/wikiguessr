@@ -1,4 +1,7 @@
 $(document).ready(function() {
+    // Tracks item IDs seen across all games in this browser session to avoid repeats.
+    const seenItems = new Set();
+
     // Game state
     const gameState = {
         currentLocation: null,
@@ -196,8 +199,16 @@ $(document).ready(function() {
                         return;
                     }
 
+                    // Skip items already played in this session.
+                    const itemId = result.item.value;
+                    if (seenItems.has(itemId)) {
+                        retryOrFail();
+                        return;
+                    }
+                    seenItems.add(itemId);
+
                     successCallback({
-                        item: result.item.value,
+                        item: itemId,
                         itemLabel: result.itemLabel ? result.itemLabel.value : 'Unknown Location',
                         itemDescription: result.itemDescription ? result.itemDescription.value : '',
                         image: result.photo.value,
