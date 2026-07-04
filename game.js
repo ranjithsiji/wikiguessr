@@ -419,6 +419,16 @@ $(document).ready(function() {
     // Image fetching
     // ---------------------------------------------------------------------------
 
+    // Terms identifying imagery shot from orbit — excluded outright. Kept
+    // multi-word/specific so ground-level photos are never caught by accident
+    // (plain "iss" would match "Mississippi").
+    const SPACE_TERMS = [
+        'satellite image', 'satellite view', 'satellite photo', 'satellite picture',
+        'from space', 'seen from orbit', 'landsat', 'sentinel-2', 'copernicus',
+        'earth observatory', 'international space station', 'space station',
+        'astronaut photograph', 'spot image', 'worldview-'
+    ];
+
     // Terms whose presence in Commons metadata suggests geographic/landscape content.
     const GEO_TERMS = [
         'landscape', 'panorama', 'aerial', 'mountain', 'river', 'lake', 'coast',
@@ -473,6 +483,7 @@ $(document).ready(function() {
 
                     const metadata = info.extmetadata || {};
                     const categories = metadata.Categories ? metadata.Categories.value : '';
+                    const description = metadata.ImageDescription ? metadata.ImageDescription.value : '';
                     const lowerCats = categories.toLowerCase();
 
                     // Skip portraits, logos, flags — not useful for guessing geography.
@@ -481,11 +492,16 @@ $(document).ready(function() {
                         continue;
                     }
 
+                    // Skip photos taken from space (satellite/ISS imagery) — they
+                    // show the location from orbit, not what it looks like on the ground.
+                    const searchText = `${page.title} ${description} ${categories}`.toLowerCase();
+                    if (SPACE_TERMS.some(term => searchText.includes(term))) continue;
+
                     candidates.push({
                         url: info.url,
                         thumbUrl: info.thumburl || info.url,
                         title: page.title.replace('File:', ''),
-                        description: metadata.ImageDescription ? metadata.ImageDescription.value : '',
+                        description: description,
                         license: metadata.LicenseShortName ? metadata.LicenseShortName.value : '',
                         categories: categories
                     });
