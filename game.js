@@ -272,6 +272,24 @@ $(document).ready(function() {
         });
     }
 
+    // Fallback locations already played are remembered in localStorage so a
+    // page reload doesn't restart the list from the top (Iguazu every time).
+    const USED_FALLBACKS_KEY = 'wikiguessr_used_fallbacks';
+
+    function loadUsedFallbacks() {
+        try { return new Set(JSON.parse(localStorage.getItem(USED_FALLBACKS_KEY) || '[]')); }
+        catch (e) { return new Set(); }
+    }
+
+    function markFallbackUsed(item) {
+        const used = loadUsedFallbacks();
+        used.add(item);
+        // All entries played — reset so the rotation starts over next time.
+        if (used.size >= FALLBACK_LOCATIONS.length) used.clear();
+        try { localStorage.setItem(USED_FALLBACKS_KEY, JSON.stringify([...used])); }
+        catch (e) {}
+    }
+
     // Pop from pool immediately if available; fall back to hardcoded list if Wikidata
     // pool is still empty (e.g. on first round before SPARQL returns); poll otherwise.
     function getNextLocation(onReady) {
@@ -283,10 +301,21 @@ $(document).ready(function() {
             return;
         }
 
-        // Wikidata pool empty — try an unseen fallback location immediately.
-        const fallback = FALLBACK_LOCATIONS.find(loc => !seenItems.has(loc.item));
-        if (fallback) {
+        // Wikidata pool empty — pick a RANDOM fallback not yet played this
+        // session nor in previous sessions (localStorage), so the first round
+        // varies between visits instead of always being the list's first entry.
+        const usedFallbacks = loadUsedFallbacks();
+        let candidates = FALLBACK_LOCATIONS.filter(
+            loc => !seenItems.has(loc.item) && !usedFallbacks.has(loc.item)
+        );
+        // Every fallback used across sessions: allow ones unseen this session.
+        if (candidates.length === 0) {
+            candidates = FALLBACK_LOCATIONS.filter(loc => !seenItems.has(loc.item));
+        }
+        if (candidates.length > 0) {
+            const fallback = candidates[Math.floor(Math.random() * candidates.length)];
             seenItems.add(fallback.item);
+            markFallbackUsed(fallback.item);
             refillLocationPool();
             onReady(fallback);
             return;
