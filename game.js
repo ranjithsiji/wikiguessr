@@ -147,7 +147,7 @@ $(document).ready(function() {
         gameState.slideshowPaused = false;
 
         stopSlideshow();
-        $("#resultModal").hide();
+        $("#resultModal").removeClass('active');
 
         updateProgressBar(0);
         $("#progressContainer").show();
@@ -759,15 +759,25 @@ $(document).ready(function() {
             .appendTo($popupContent);
         actualMarker.bindPopup($popupContent[0]).openPopup();
 
+        // Antimeridian fix: if the two points are on opposite sides of the ±180°
+        // seam, shifting one longitude by 360° gives the short great-circle path
+        // that matches the actual (Haversine) distance rather than the long way
+        // around the flat projection.
+        const actualLon = gameState.currentLocation.lon;
+        let guessLon = userLatLng.lng;
+        if (Math.abs(guessLon - actualLon) > 180) {
+            guessLon += (actualLon > guessLon ? 360 : -360);
+        }
+
         L.polyline([
-            [gameState.currentLocation.lat, gameState.currentLocation.lon],
-            [userLatLng.lat, userLatLng.lng]
-        ], { color: 'red' }).addTo(gameState.map);
+            [gameState.currentLocation.lat, actualLon],
+            [userLatLng.lat, guessLon]
+        ], { color: '#e74c3c', weight: 3, dashArray: '6, 6' }).addTo(gameState.map);
 
         gameState.map.fitBounds(L.latLngBounds([
-            [gameState.currentLocation.lat, gameState.currentLocation.lon],
-            [userLatLng.lat, userLatLng.lng]
-        ]), { padding: [50, 50] });
+            [gameState.currentLocation.lat, actualLon],
+            [userLatLng.lat, guessLon]
+        ]), { padding: [40, 40], maxZoom: 8 });
 
         showResults(distance, score);
 
@@ -780,24 +790,29 @@ $(document).ready(function() {
         $("#resultDistance").empty();
         $('<h2></h2>').text(gameState.currentLocation.name || "Unknown Location")
             .appendTo("#resultDistance");
+
+        // Format distance: metres if < 1 km, otherwise km with 1 decimal.
+        const distanceText = distance < 1
+            ? `${Math.round(distance * 1000)} m`
+            : `${distance.toFixed(1)} km`;
         $('<div class="result-distance"></div>')
-            .html(`Your guess was <strong>${distance.toFixed(1)} km</strong> away`)
+            .html(`Your guess was <strong>${distanceText}</strong> away`)
             .appendTo("#resultDistance");
         $('<div class="result-score"></div>')
-            .text(`+${score} points`)
+            .text(`+${score.toLocaleString()} points`)
             .appendTo("#resultDistance");
 
         let message;
-        if (distance < 1)         message = "Incredible! Are you a wizard?";
-        else if (distance < 10)   message = "Amazing guess! You must know this place well.";
-        else if (distance < 100)  message = "Great job! You were very close.";
-        else if (distance < 500)  message = "Good guess! You were in the right area.";
-        else if (distance < 2000) message = "Not bad! You were in the right region.";
-        else                      message = "Better luck next time!";
+        if (distance < 1)         message = "🎯 Incredible! Are you a wizard?";
+        else if (distance < 10)   message = "🔥 Amazing guess! You must know this place well.";
+        else if (distance < 100)  message = "👏 Great job! You were very close.";
+        else if (distance < 500)  message = "👍 Good guess! You were in the right area.";
+        else if (distance < 2000) message = "🙂 Not bad! You were in the right region.";
+        else                      message = "🌍 Better luck next time!";
 
         $("#resultMessage").text(message);
-        $("#resultModal").show();
-        $("#scoreDisplay").text(`Score: ${gameState.score}`);
+        $("#resultModal").addClass('active');
+        $("#scoreDisplay").text(`Score: ${gameState.score.toLocaleString()}`);
     }
 
     function showError(message) {
@@ -858,7 +873,7 @@ $(document).ready(function() {
         $doc.on('click.wikiguessr', '#guessBtn', submitGuess);
 
         $doc.on('click.wikiguessr', '#nextRoundBtn', function() {
-            $("#resultModal").hide();
+            $("#resultModal").removeClass('active');
             if (gameState.round < gameState.maxRounds) {
                 gameState.round++;
                 startNewRound();
