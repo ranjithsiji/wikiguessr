@@ -10,6 +10,7 @@ $(document).ready(function() {
         TARGET: 3,      // keep at least this many ready
         BATCH: 10       // candidates fetched per SPARQL request
     };
+    let locationPoll = null; // active getNextLocation() wait-poll, if any
 
     // Game state
     const gameState = {
@@ -51,6 +52,10 @@ $(document).ready(function() {
         { item: 'fallback:mekong',       itemLabel: 'Mekong Delta',            itemDescription: 'River delta in southern Vietnam', lat: 10.0452, lon: 105.7469 },
         { item: 'fallback:sahara',       itemLabel: 'Sahara Desert',           itemDescription: 'Vast hot desert spanning northern Africa', lat: 23.4162, lon: 25.6628 }
     ];
+
+    // Pristine game-area markup, captured before the first round touches the DOM.
+    // Reused verbatim when the player restarts, instead of duplicating the HTML here.
+    const GAME_AREA_TEMPLATE = $('.game-area').html();
 
     initGame();
 
@@ -322,10 +327,14 @@ $(document).ready(function() {
         }
 
         // All fallbacks exhausted too — poll for the Wikidata pool to fill.
+        // Clear any poll left over from a previous round so two polls never
+        // race and deliver two locations for the same round.
         refillLocationPool();
-        const poll = setInterval(function() {
+        if (locationPoll) clearInterval(locationPoll);
+        locationPoll = setInterval(function() {
             if (locationPool.items.length > 0) {
-                clearInterval(poll);
+                clearInterval(locationPoll);
+                locationPoll = null;
                 const loc = locationPool.items.shift();
                 seenItems.add(loc.item);
                 refillLocationPool();
@@ -487,8 +496,11 @@ $(document).ready(function() {
                     return;
                 }
 
-                // Sort by geographic relevance, take top 20.
-                candidates.sort((a, b) => geoRelevanceScore(b) - geoRelevanceScore(a));
+                // Sort by geographic relevance, take top 20. Score each image
+                // once up front — the sort comparator would otherwise recompute
+                // the keyword scan O(n log n) times.
+                candidates.forEach(c => { c.geoScore = geoRelevanceScore(c); });
+                candidates.sort((a, b) => b.geoScore - a.geoScore);
                 successCallback(candidates.slice(0, 20));
             },
             error: function() {
@@ -540,6 +552,24 @@ $(document).ready(function() {
             `);
     }
 
+    function updateImageCounter() {
+        $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
+    }
+
+    // Step forward (+1) or back (-1) through the images, wrapping at both ends.
+    function navigateImage(delta) {
+        const count = gameState.images.length;
+        if (count === 0) return;
+        gameState.currentImageIndex = (gameState.currentImageIndex + delta + count) % count;
+        if (gameState.currentViewMode === 'slideshow') {
+            updateSlideshowImage();
+        } else {
+            $("#imageContainer .gallery-thumbnail").removeClass('active')
+                .eq(gameState.currentImageIndex).addClass('active');
+        }
+        updateImageCounter();
+    }
+
     function displayImage(index) {
         if (gameState.images.length === 0) {
             $("#imageCounter").text("0 / 0");
@@ -556,7 +586,7 @@ $(document).ready(function() {
         } else {
             setupGallery($imageContainer);
         }
-        $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
+        updateImageCounter();
     }
 
     const SLIDESHOW_INTERVAL_MS = 4000;
@@ -571,15 +601,16 @@ $(document).ready(function() {
         const $slide = $('<div class="slideshow-slide"></div>');
         const currentImage = gameState.images[gameState.currentImageIndex];
 
+        // Orientation class comes from the element's own load event — no second
+        // detached Image() download. Handler bound before src so it always fires,
+        // and persists for later src swaps by updateSlideshowImage().
         const $img = $('<img>')
-            .attr('src', currentImage.thumbUrl || currentImage.url)
-            .attr('alt', currentImage.title || 'Location image');
-
-        const img = new Image();
-        img.onload = function() {
-            $img.addClass(this.width > this.height ? 'landscape' : 'portrait');
-        };
-        img.src = currentImage.thumbUrl || currentImage.url;
+            .attr('alt', currentImage.title || 'Location image')
+            .on('load', function() {
+                $(this).removeClass('landscape portrait')
+                    .addClass(this.naturalWidth > this.naturalHeight ? 'landscape' : 'portrait');
+            })
+            .attr('src', currentImage.thumbUrl || currentImage.url);
 
         if (currentImage.license) {
             $slide.append(
@@ -615,23 +646,23 @@ $(document).ready(function() {
         }
     }
 
+    // Restart the CSS progress animation from 0. Clearing the inline width also
+    // undoes the freeze applied by pauseSlideshow().
+    function restartProgressAnimation() {
+        const $bar = $('.slideshow-progress-bar');
+        if (!$bar.length) return;
+        $bar.css({ animation: 'none', width: '' });
+        void $bar[0].offsetWidth; // force reflow so the animation actually restarts
+        $bar.css('animation', `slideshow-tick ${SLIDESHOW_INTERVAL_MS}ms linear forwards`);
+    }
+
     function startSlideshowTimer() {
         if (gameState.slideshowInterval) clearInterval(gameState.slideshowInterval);
-
-        // Restart the CSS progress animation
-        const $bar = $('.slideshow-progress-bar');
-        $bar.css('animation', 'none');
-        // Force reflow so removing animation takes effect before re-adding
-        $bar[0] && $bar[0].offsetWidth;
-        $bar.css('animation', `slideshow-tick ${SLIDESHOW_INTERVAL_MS}ms linear forwards`);
-
+        restartProgressAnimation();
         gameState.slideshowInterval = setInterval(() => {
             gameState.currentImageIndex = (gameState.currentImageIndex + 1) % gameState.images.length;
             updateSlideshowImage();
-            // Restart bar for the new image
-            $bar.css('animation', 'none');
-            $bar[0] && $bar[0].offsetWidth;
-            $bar.css('animation', `slideshow-tick ${SLIDESHOW_INTERVAL_MS}ms linear forwards`);
+            restartProgressAnimation();
         }, SLIDESHOW_INTERVAL_MS);
     }
 
@@ -658,19 +689,13 @@ $(document).ready(function() {
         if (gameState.images.length === 0) return;
 
         const currentImage = gameState.images[gameState.currentImageIndex];
-        const $img = $("#imageContainer .slideshow-container img");
 
-        $img.attr({
+        // The load handler bound in setupSlideshow() re-fires on src change and
+        // reapplies the landscape/portrait class.
+        $("#imageContainer .slideshow-container img").attr({
             src: currentImage.thumbUrl || currentImage.url,
             alt: currentImage.title || 'Location image'
         });
-
-        const img = new Image();
-        img.onload = function() {
-            $img.removeClass('landscape portrait')
-                .addClass(this.width > this.height ? 'landscape' : 'portrait');
-        };
-        img.src = currentImage.thumbUrl || currentImage.url;
 
         const $attribution = $("#imageContainer .slideshow-container .image-attribution");
         if (currentImage.license) {
@@ -678,7 +703,7 @@ $(document).ready(function() {
         } else {
             $attribution.hide();
         }
-        $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
+        updateImageCounter();
     }
 
     function setupGallery($container) {
@@ -705,7 +730,7 @@ $(document).ready(function() {
                 gameState.currentImageIndex = index;
                 $gallery.find('.gallery-thumbnail').removeClass('active');
                 $thumbnail.addClass('active');
-                $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
+                updateImageCounter();
             });
             $gallery.append($thumbnail);
         });
@@ -873,31 +898,8 @@ $(document).ready(function() {
             displayImage(gameState.currentImageIndex);
         });
 
-        $doc.on('click.wikiguessr', '#prevBtn', function() {
-            if (gameState.images.length === 0) return;
-            gameState.currentImageIndex =
-                (gameState.currentImageIndex - 1 + gameState.images.length) % gameState.images.length;
-            if (gameState.currentViewMode === 'slideshow') {
-                updateSlideshowImage();
-            } else {
-                $("#imageContainer .gallery-thumbnail").removeClass('active')
-                    .eq(gameState.currentImageIndex).addClass('active');
-            }
-            $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
-        });
-
-        $doc.on('click.wikiguessr', '#nextBtn', function() {
-            if (gameState.images.length === 0) return;
-            gameState.currentImageIndex =
-                (gameState.currentImageIndex + 1) % gameState.images.length;
-            if (gameState.currentViewMode === 'slideshow') {
-                updateSlideshowImage();
-            } else {
-                $("#imageContainer .gallery-thumbnail").removeClass('active')
-                    .eq(gameState.currentImageIndex).addClass('active');
-            }
-            $("#imageCounter").text(`${gameState.currentImageIndex + 1} / ${gameState.images.length}`);
-        });
+        $doc.on('click.wikiguessr', '#prevBtn', () => navigateImage(-1));
+        $doc.on('click.wikiguessr', '#nextBtn', () => navigateImage(1));
 
         $doc.on('click.wikiguessr', '#guessBtn', submitGuess);
 
@@ -910,12 +912,22 @@ $(document).ready(function() {
                 endGame();
             }
         });
+
+        // Game-over screen buttons (created dynamically by endGame).
+        $doc.on('click.wikiguessr', '#restartBtn', function() {
+            stopSlideshow();
+            $('.game-area').html(GAME_AREA_TEMPLATE);
+            initGame();
+        });
+        $doc.on('click.wikiguessr', '#endScoresBtn', openScoresPanel);
     }
 
     // ---------------------------------------------------------------------------
     // End game / restart
     // ---------------------------------------------------------------------------
 
+    // Restart and View Scores clicks are handled by the delegated listeners
+    // registered in setupEventListeners().
     function endGame() {
         saveScore(gameState.score);
         updateProgressBar(100);
@@ -923,7 +935,7 @@ $(document).ready(function() {
         $(".game-area").html(`
             <div class="game-over-screen">
                 <h2>🎉 Game Complete! 🎊</h2>
-                <p>Your final score: <strong>${gameState.score}</strong></p>
+                <p>Your final score: <strong>${gameState.score.toLocaleString()}</strong></p>
                 <button id="restartBtn" class="next-round-btn">Play Again</button>
                 <button id="endScoresBtn" class="scores-header-btn" style="margin-top:10px">
                   <i class="fas fa-trophy"></i> View Scores
@@ -931,38 +943,7 @@ $(document).ready(function() {
             </div>
         `);
 
-        $('#endScoresBtn').on('click', openScoresPanel);
-
         // Keep filling the pool so the next game starts instantly.
         refillLocationPool();
-
-        $("#restartBtn").click(function() {
-            stopSlideshow();
-            $(".game-area").html(`
-                <div class="image-container" id="imageContainer">
-                    <div class="loading">
-                        <i class="fas fa-spinner loading-spinner"></i> Loading game...
-                    </div>
-                </div>
-
-                <div class="image-nav">
-                    <button class="nav-btn" id="prevBtn">
-                        <i class="fas fa-arrow-left"></i> Previous
-                    </button>
-                    <span id="imageCounter">1 / 1</span>
-                    <button class="nav-btn" id="nextBtn">
-                        Next <i class="fas fa-arrow-right"></i>
-                    </button>
-                    <button class="view-mode-toggle" id="viewModeToggle"></button>
-                </div>
-
-                <div class="guess-controls">
-                    <p>Click on the map below to mark your guess.</p>
-                    <button class="guess-btn" id="guessBtn" disabled>Make Guess</button>
-                </div>
-                <div class="map-container" id="map"></div>
-            `);
-            initGame();
-        });
     }
 });
