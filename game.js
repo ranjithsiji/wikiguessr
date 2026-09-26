@@ -709,6 +709,17 @@ $(document).ready(function() {
         $slideshow.append($slide);
         $slideshow.append($progressWrap);
         $slideshow.append($pauseBtn);
+
+        // Prev/next arrows overlaid on the image itself, for touch and mouse.
+        if (gameState.images.length > 1) {
+            $slideshow.append(
+                $('<button class="slideshow-arrow slideshow-arrow-prev" aria-label="Previous image"></button>')
+                    .html('<i class="fas fa-chevron-left"></i>'),
+                $('<button class="slideshow-arrow slideshow-arrow-next" aria-label="Next image"></button>')
+                    .html('<i class="fas fa-chevron-right"></i>')
+            );
+        }
+
         $container.append($slideshow);
 
         $pauseBtn.on('click', function() {
@@ -719,9 +730,55 @@ $(document).ready(function() {
             }
         });
 
+        attachSwipe($slideshow);
+
         if (gameState.images.length > 1) {
             startSlideshowTimer();
         }
+    }
+
+    // Manual navigation restarts the auto-advance timer so the player gets a
+    // full interval to look at the image they just chose, rather than having it
+    // flip away mid-glance.
+    function slideshowStep(delta) {
+        if (gameState.images.length < 2) return;
+        navigateImage(delta);
+        if (!gameState.slideshowPaused) {
+            startSlideshowTimer();
+        } else {
+            restartProgressAnimation();
+            pauseSlideshow();
+        }
+    }
+
+    // Horizontal swipe over the slide. Uses Pointer Events, which cover touch,
+    // pen and mouse in one path; the thresholds reject vertical scrolls and
+    // stray taps so page scrolling still works over the image.
+    const SWIPE_MIN_PX = 45;   // shorter drags are treated as a tap
+    const SWIPE_MAX_OFF = 60;  // more vertical travel than this means scrolling
+
+    function attachSwipe($el) {
+        let startX = 0, startY = 0, tracking = false;
+
+        $el.on('pointerdown', function(e) {
+            if (e.button != null && e.button !== 0) return; // ignore right/middle click
+            tracking = true;
+            startX = e.clientX;
+            startY = e.clientY;
+        });
+
+        $el.on('pointerup pointercancel', function(e) {
+            if (!tracking) return;
+            tracking = false;
+            if (e.type === 'pointercancel') return;
+
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dy) > SWIPE_MAX_OFF) return;
+
+            // Swiping left moves forward, matching native photo viewers.
+            slideshowStep(dx < 0 ? 1 : -1);
+        });
     }
 
     // Restart the CSS progress animation from 0. Clearing the inline width also
@@ -804,11 +861,11 @@ $(document).ready(function() {
                 });
 
             $thumbnail.append($img);
+            // Tapping a thumbnail opens that image full-size in slideshow view,
+            // where the arrows and swipe navigation live.
             $thumbnail.click(() => {
-                gameState.currentImageIndex = index;
-                $gallery.find('.gallery-thumbnail').removeClass('active');
-                $thumbnail.addClass('active');
-                updateImageCounter();
+                gameState.currentViewMode = 'slideshow';
+                displayImage(index);
             });
             $gallery.append($thumbnail);
         });
@@ -983,6 +1040,9 @@ $(document).ready(function() {
 
         $doc.on('click.wikiguessr', '#prevBtn', () => navigateImage(-1));
         $doc.on('click.wikiguessr', '#nextBtn', () => navigateImage(1));
+
+        $doc.on('click.wikiguessr', '.slideshow-arrow-prev', () => slideshowStep(-1));
+        $doc.on('click.wikiguessr', '.slideshow-arrow-next', () => slideshowStep(1));
 
         $doc.on('click.wikiguessr', '#tabImages', () => switchTab('images'));
         $doc.on('click.wikiguessr', '#tabMap', () => switchTab('map'));

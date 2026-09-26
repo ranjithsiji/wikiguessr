@@ -901,6 +901,8 @@ a.footer-link {
     position: relative;
     overflow: hidden;
     background-color: #000;
+    /* Allow vertical page scrolling but claim horizontal drags for swipe. */
+    touch-action: pan-y;
 }
 
 .slideshow-slide {
@@ -932,6 +934,58 @@ a.footer-link {
 @keyframes slideshow-tick {
     from { width: 0%; }
     to   { width: 100%; }
+}
+
+/* Prev/next arrows overlaid on the slide. Sized for touch (44px target) and
+   kept above the image but below nothing else that takes input. */
+.slideshow-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 22;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 50%;
+    /* A translucent white ring keeps the control visible on dark photos, where
+       a plain dark circle would disappear. */
+    background: rgba(20, 20, 20, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    color: #fff;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+    /* Let vertical page scrolling through, but claim horizontal drags. */
+    touch-action: pan-y;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.slideshow-arrow:hover {
+    background: rgba(0, 0, 0, 0.8);
+    border-color: rgba(255, 255, 255, 0.9);
+}
+.slideshow-arrow:active { background: rgba(0, 0, 0, 0.95); }
+
+.slideshow-arrow-prev { left: 10px; }
+.slideshow-arrow-next { right: 10px; }
+
+@media (max-width: 768px) {
+    .slideshow-arrow {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+    }
+    .slideshow-arrow-prev { left: 6px; }
+    .slideshow-arrow-next { right: 6px; }
+}
+
+/* Thumbnails are tappable: hint it on touch devices too. */
+.gallery-thumbnail {
+    -webkit-tap-highlight-color: transparent;
 }
 
 /* Pause / resume button overlaid bottom-right of the slideshow */
