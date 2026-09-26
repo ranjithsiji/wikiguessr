@@ -52,30 +52,94 @@
       </div>
 
       <div class="game-area">
-        <div class="image-container" id="imageContainer">
-          <div class="loading">
-            <i class="fas fa-spinner loading-spinner"></i> Loading game...
+        <!-- Step tabs: 1 Images -> 2 Map -> 3 Guess -->
+        <div class="step-tabs" role="tablist" aria-label="Game steps">
+          <button
+            class="step-tab active"
+            id="tabImages"
+            role="tab"
+            aria-selected="true"
+            aria-controls="panelImages"
+          >
+            <span class="step-num">1</span>
+            <span class="step-text">
+              <span class="step-title">Images</span>
+              <span class="step-hint">Study the photos</span>
+            </span>
+          </button>
+          <button
+            class="step-tab"
+            id="tabMap"
+            role="tab"
+            aria-selected="false"
+            aria-controls="panelMap"
+          >
+            <span class="step-num">2</span>
+            <span class="step-text">
+              <span class="step-title">Map</span>
+              <span class="step-hint">Drop your pin</span>
+            </span>
+          </button>
+          <div class="step-tab step-indicator" id="stepGuess" aria-hidden="true">
+            <span class="step-num">3</span>
+            <span class="step-text">
+              <span class="step-title">Guess</span>
+              <span class="step-hint" id="stepGuessHint">Pin required</span>
+            </span>
           </div>
         </div>
 
-        <div class="image-nav">
-          <button class="nav-btn" id="prevBtn">
-            <i class="fas fa-arrow-left"></i> Previous
-          </button>
-          <span id="imageCounter">1 / 1</span>
-          <button class="nav-btn" id="nextBtn">
-            Next <i class="fas fa-arrow-right"></i>
-          </button>
-          <button class="view-mode-toggle" id="viewModeToggle"></button>
+        <!-- Stage: exactly one panel visible at a time -->
+        <div class="stage">
+          <section
+            class="stage-panel active"
+            id="panelImages"
+            role="tabpanel"
+            aria-labelledby="tabImages"
+          >
+            <div class="image-container" id="imageContainer">
+              <div class="loading">
+                <i class="fas fa-spinner loading-spinner"></i> Loading game...
+              </div>
+            </div>
+
+            <div class="image-nav">
+              <button class="nav-btn" id="prevBtn" aria-label="Previous image">
+                <i class="fas fa-arrow-left"></i><span class="btn-label"> Previous</span>
+              </button>
+              <span id="imageCounter">1 / 1</span>
+              <button class="nav-btn" id="nextBtn" aria-label="Next image">
+                <span class="btn-label">Next </span><i class="fas fa-arrow-right"></i>
+              </button>
+              <button class="view-mode-toggle" id="viewModeToggle"></button>
+            </div>
+          </section>
+
+          <section
+            class="stage-panel"
+            id="panelMap"
+            role="tabpanel"
+            aria-labelledby="tabMap"
+          >
+            <div class="map-container" id="map"></div>
+            <div class="map-hint" id="mapHint">
+              <i class="fas fa-hand-pointer"></i>
+              <span>Click anywhere on the map to place your pin.</span>
+            </div>
+          </section>
         </div>
 
-        
-
-        <div class="guess-controls">
-          <p>Click on the map below to mark your guess.</p>
-          <button class="guess-btn" id="guessBtn" disabled>Make Guess</button>
+        <!-- Action bar -->
+        <div class="action-bar">
+          <button class="action-btn action-btn-secondary" id="switchBtn">
+            <i class="fas fa-map-location-dot"></i>
+            <span id="switchBtnLabel">Put the Pin</span>
+          </button>
+          <button class="action-btn action-btn-primary" id="guessBtn" disabled>
+            <i class="fas fa-crosshairs"></i>
+            <span>Make the Guess</span>
+          </button>
         </div>
-        <div class="map-container" id="map"></div>
       </div>
     </div>
 

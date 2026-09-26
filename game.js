@@ -24,7 +24,8 @@ $(document).ready(function() {
         maxRounds: 5,
         currentViewMode: 'gallery', // 'gallery' or 'slideshow'
         slideshowInterval: null,
-        slideshowPaused: false
+        slideshowPaused: false,
+        activeTab: 'images'         // 'images' or 'map'
     };
 
     // Hardcoded fallback pool — used only when the Wikidata pool is empty at round start.
@@ -150,6 +151,7 @@ $(document).ready(function() {
         gameState.currentImageIndex = 0;
         gameState.currentViewMode = 'gallery';
         gameState.slideshowPaused = false;
+        gameState.activeTab = 'images';
 
         stopSlideshow();
         $("#resultModal").removeClass('active');
@@ -163,6 +165,7 @@ $(document).ready(function() {
         setupEventListeners();
 
         initMap();
+        switchTab('images');
         startNewRound();
     }
 
@@ -188,8 +191,54 @@ $(document).ready(function() {
                     iconAnchor: [12, 24]
                 })
             }).addTo(gameState.map);
-            $("#guessBtn").prop("disabled", false);
+            setPinPlaced(true);
         });
+    }
+
+    // ---------------------------------------------------------------------------
+    // Tab panel (1 Images / 2 Map / 3 Guess)
+    // ---------------------------------------------------------------------------
+
+    // Show one stage panel and sync the tabs, the switch button and step 3.
+    function switchTab(tab) {
+        gameState.activeTab = tab;
+        const onMap = tab === 'map';
+
+        $('#panelImages').toggleClass('active', !onMap);
+        $('#panelMap').toggleClass('active', onMap);
+
+        $('#tabImages').toggleClass('active', !onMap).attr('aria-selected', String(!onMap));
+        $('#tabMap').toggleClass('active', onMap).attr('aria-selected', String(onMap));
+
+        // The switch button always offers the *other* panel.
+        $('#switchBtnLabel').text(onMap ? 'Back to Images' : 'Put the Pin');
+        $('#switchBtn i').attr('class', onMap ? 'fas fa-images' : 'fas fa-map-location-dot');
+
+        if (onMap) {
+            // Leaflet sizes itself on creation; the panel was off-stage then, so
+            // re-measure now that it is visible or tiles/clicks land wrong.
+            if (gameState.map) gameState.map.invalidateSize();
+            stopSlideshow();
+        } else if (gameState.currentViewMode === 'slideshow' &&
+                   gameState.images.length > 1 &&
+                   !gameState.slideshowPaused &&
+                   $('#imageContainer .slideshow-container').length) {
+            // Coming back to the images: resume the slideshow where it left off.
+            // The DOM check skips this when the container is still loading/empty.
+            startSlideshowTimer();
+        }
+    }
+
+    // Single place that knows what "a pin is down" looks like across the UI.
+    function setPinPlaced(placed) {
+        $('#guessBtn').prop('disabled', !placed);
+        $('#stepGuess').toggleClass('ready', placed);
+        $('#stepGuessHint').text(placed ? 'Ready to submit' : 'Pin required');
+        $('#mapHint').toggleClass('placed', placed)
+            .find('span').text(placed
+                ? 'Pin placed. Click elsewhere to move it, or make your guess.'
+                : 'Click anywhere on the map to place your pin.');
+        $('#mapHint i').attr('class', placed ? 'fas fa-map-pin' : 'fas fa-hand-pointer');
     }
 
     function updateProgressBar(percentage) {
@@ -346,20 +395,27 @@ $(document).ready(function() {
     // Round management
     // ---------------------------------------------------------------------------
 
-    function startNewRound() {
+    // isRetry is set by the image-loading failure path, which re-enters this
+    // function for the *same* round. A retry must not yank the player back to
+    // the images tab or clear a pin they have already placed.
+    function startNewRound(isRetry) {
         stopSlideshow();
 
-        gameState.userGuess = null;
         gameState.images = [];
         gameState.currentImageIndex = 0;
 
-        gameState.map.eachLayer(layer => {
-            if (layer instanceof L.Marker || layer instanceof L.Polyline) {
-                gameState.map.removeLayer(layer);
-            }
-        });
+        if (!isRetry) {
+            gameState.userGuess = null;
 
-        $("#guessBtn").prop("disabled", true);
+            gameState.map.eachLayer(layer => {
+                if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+                    gameState.map.removeLayer(layer);
+                }
+            });
+
+            setPinPlaced(false);
+            switchTab('images');
+        }
 
         const progress = (gameState.round / gameState.maxRounds) * 100;
         updateProgressBar(progress);
@@ -397,7 +453,7 @@ $(document).ready(function() {
                         function(images) {
                             if (images.length === 0) {
                                 showError("No images found. Trying again...");
-                                setTimeout(startNewRound, 1500);
+                                setTimeout(() => startNewRound(true), 1500);
                                 return;
                             }
                             gameState.images = images;
@@ -406,7 +462,7 @@ $(document).ready(function() {
                         function(error) {
                             showError("Failed to load images. Trying again...");
                             console.error("Image loading error:", error);
-                            setTimeout(startNewRound, 1500);
+                            setTimeout(() => startNewRound(true), 1500);
                         }
                     );
                 }
@@ -792,6 +848,11 @@ $(document).ready(function() {
         stopSlideshow();
         $("#imageContainer").empty();
 
+        // The result draws markers and the distance line on the map, so make
+        // sure that is the panel the player is looking at.
+        switchTab('map');
+        setPinPlaced(false); // no second submission for this round
+
         const userLatLng = gameState.userGuess.getLatLng();
         const distance = calculateDistance(
             gameState.currentLocation.lat,
@@ -912,6 +973,14 @@ $(document).ready(function() {
 
         $doc.on('click.wikiguessr', '#prevBtn', () => navigateImage(-1));
         $doc.on('click.wikiguessr', '#nextBtn', () => navigateImage(1));
+
+        $doc.on('click.wikiguessr', '#tabImages', () => switchTab('images'));
+        $doc.on('click.wikiguessr', '#tabMap', () => switchTab('map'));
+
+        // One button, two directions: to the map, or back to the images.
+        $doc.on('click.wikiguessr', '#switchBtn', function() {
+            switchTab(gameState.activeTab === 'map' ? 'images' : 'map');
+        });
 
         $doc.on('click.wikiguessr', '#guessBtn', submitGuess);
 

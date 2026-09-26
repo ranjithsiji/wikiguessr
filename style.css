@@ -226,26 +226,144 @@ h1 {
 .game-area {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 14px;
+}
+
+/* ── Step tabs (1 Images → 2 Map → 3 Guess) ─────────────────────────────── */
+
+.step-tabs {
+    display: flex;
+    gap: 8px;
+    background: #fff;
+    padding: 8px;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.step-tab {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 2px solid transparent;
+    border-radius: 9px;
+    background: #f4f6f8;
+    color: #7f8c8d;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.step-tab:hover:not(.active):not(.step-indicator) {
+    background: #e9edf1;
+    color: #5d6d7e;
+}
+
+.step-tab.active {
+    background: #eaf4fc;
+    border-color: #3498db;
+    color: #2c3e50;
+}
+
+/* Step 3 is a status readout, not a tab — no pointer, no hover. */
+.step-indicator {
+    cursor: default;
+}
+
+.step-indicator.ready {
+    background: #eafaf1;
+    border-color: #27ae60;
+    color: #1e7e46;
+}
+
+.step-num {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #cfd8dc;
+    color: #fff;
+    font-weight: bold;
+    font-size: 0.95em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.step-tab.active .step-num { background: #3498db; }
+.step-indicator.ready .step-num { background: #27ae60; }
+
+.step-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.25;
+}
+
+.step-title {
+    font-weight: bold;
+    font-size: 0.98em;
+}
+
+.step-hint {
+    font-size: 0.75em;
+    opacity: 0.8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Stage: one panel visible at a time ─────────────────────────────────── */
+
+/* Inactive panels are moved out of view rather than display:none, so Leaflet
+   keeps a real size while the map tab is hidden. */
+.stage {
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+.stage-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.stage-panel:not(.active) {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    visibility: hidden;
+    pointer-events: none;
+    /* Keep it laid out (so #map has dimensions) but out of the way. */
+    transform: translateX(-200%);
 }
 
 .image-container {
     position: relative;
-    height: 500px;
+    height: 60vh;
+    min-height: 320px;
+    max-height: 620px;
     background-color: #ddd;
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-
 .image-nav {
     display: flex;
+    align-items: center;
     justify-content: center;
+    flex-wrap: wrap;
     gap: 10px;
-    margin-top: 10px;
-    border: 2px solid rgb(203, 203, 203);
-    padding: 10px;
+    background: #fff;
+    border: 1px solid #e0e4e8;
+    padding: 8px 10px;
     border-radius: 10px;
 }
 
@@ -254,7 +372,7 @@ h1 {
     color: white;
     border: none;
     padding: 8px 15px;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     transition: background-color 0.3s;
 }
@@ -267,29 +385,118 @@ h1 {
     background-color: #95a5a6;
     cursor: not-allowed;
 }
-#imageCounter {
-    display: flex;
-    align-items: center;
-    font-weight: bold;
-}
+
 .map-container {
-    height: 500px;
+    height: 60vh;
+    min-height: 320px;
+    max-height: 620px;
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     border: 1px solid #dfe0ff;
 }
 
-.guess-controls {
-        display: flex;
-        justify-content: space-evenly;
-        align-items: center;
-        border: 2px solid #0c1bf9;
-        border-radius: 10px;
-}
-.guess-controls p{ 
+.map-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid #e0e4e8;
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 0.92em;
     font-weight: bold;
-    color:rgb(11, 116, 20);
+    color: #0b7414;
+}
+
+.map-hint.placed {
+    color: #1e7e46;
+    background: #eafaf1;
+    border-color: #a9dfc3;
+}
+
+.map-hint i { opacity: 0.8; }
+
+/* ── Action bar ─────────────────────────────────────────────────────────── */
+
+.action-bar {
+    display: flex;
+    gap: 10px;
+}
+
+.action-btn {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 18px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.05em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.action-btn:active:not(:disabled) { transform: scale(0.985); }
+
+.action-btn-secondary {
+    background-color: #2c3e50;
+    color: #fff;
+}
+.action-btn-secondary:hover { background-color: #1a2836; }
+
+.action-btn-primary {
+    background-color: #fa092b;
+    color: #fff;
+}
+.action-btn-primary:hover:not(:disabled) { background-color: #c00720; }
+
+.action-btn:disabled {
+    background-color: #bdc3c7;
+    color: #eef1f2;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* Nudge attention to the guess button once a pin is down. */
+.action-btn-primary:not(:disabled) {
+    animation: guess-ready-pulse 1.6s ease-in-out 3;
+}
+
+@keyframes guess-ready-pulse {
+    0%, 100% { box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12); }
+    50%      { box-shadow: 0 2px 16px rgba(250, 9, 43, 0.55); }
+}
+
+@media (max-width: 768px) {
+    .step-tabs { gap: 6px; padding: 6px; }
+    .step-tab { padding: 8px; gap: 8px; }
+    .step-hint { display: none; }
+    .step-num { width: 24px; height: 24px; font-size: 0.85em; }
+    .step-title { font-size: 0.9em; }
+
+    /* Leave room for the header, step tabs and the action bar so the two
+       buttons stay reachable without scrolling. */
+    .image-container,
+    .map-container {
+        height: 45vh;
+        min-height: 240px;
+    }
+
+    .container { padding: 12px; }
+    .game-info { margin-bottom: 12px; }
+    .map-hint { padding: 8px; font-size: 0.85em; }
+
+    .action-btn {
+        padding: 13px 10px;
+        font-size: 0.98em;
+    }
+
+    .nav-btn .btn-label { display: none; }
 }
 
 .score-display,
@@ -299,27 +506,6 @@ h1 {
     padding: 8px 15px;
     background-color: #ecf0f1;
     border-radius: 4px;
-}
-
-.guess-btn {
-    background-color: #fa092b;
-    color: white;
-    border: none;
-    padding: 10px 30px;
-    border-radius: 4px;
-    font-weight: bold;
-    cursor: pointer;
-    font-size: 1.1em;
-    transition: background-color 0.3s;
-}
-
-.guess-btn:hover {
-    background-color: #500a13;
-}
-
-.guess-btn:disabled {
-    background-color: #95a5a6;
-    cursor: not-allowed;
 }
 
 .game-over-screen {
@@ -556,13 +742,8 @@ a.footer-link {
 }
 
 /* Add Loading animation into the image background */
-.image-container {
-    position: relative;
-    height: 500px;
+.image-container.loading {
     background-color: #f5f5f5;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .image-container.loading::before {
