@@ -15,23 +15,94 @@ body {
 header {
     background-color: #2c3e50;
     color: white;
-    padding: 5px 0;
-    margin-bottom: 5px;
+    padding: 0;
 }
 
 .header-inner {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
+    gap: 14px;
+    padding-top: 8px;
+    padding-bottom: 8px;
 }
 
-h1 {
-    margin: 0;
-    font-size: 1.6em;
-    flex: 1 1 auto;
+/* Brand */
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
     min-width: 0;
+}
+.brand-mark { font-size: 1.35em; line-height: 1; }
+.brand-text { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.brand-name {
+    font-size: 1.05em;
+    font-weight: bold;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+}
+.brand-tag {
+    font-size: 0.68em;
+    color: #9fb3c8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Round meter: dots replace the old progress bar */
+.header-meter {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    padding: 5px 14px;
+}
+
+.meter-label {
+    font-size: 0.68em;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #9fb3c8;
+}
+
+.round-dots { display: flex; align-items: center; gap: 6px; }
+
+/* grey = not attempted, blue = active, green = completed */
+.round-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #55697c;
+    transition: background 0.25s, box-shadow 0.25s, transform 0.25s;
+}
+.round-dot.done { background: #27ae60; }
+.round-dot.active {
+    background: #3498db;
+    transform: scale(1.25);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+}
+
+.meter-count {
+    font-size: 0.82em;
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+}
+
+.header-right { display: flex; align-items: center; gap: 10px; }
+
+.score-chip {
+    background: rgba(241, 196, 15, 0.15);
+    border: 1px solid rgba(241, 196, 15, 0.45);
+    color: #f1c40f;
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 0.82em;
+    font-weight: bold;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Scores button in header */
@@ -39,15 +110,14 @@ h1 {
     background: #f1c40f;
     color: #2c3e50;
     border: none;
-    border-radius: 6px;
-    padding: 8px 16px;
-    font-size: 0.95em;
+    border-radius: 999px;
+    padding: 6px 13px;
+    font-size: 0.82em;
     font-weight: bold;
     cursor: pointer;
     white-space: nowrap;
     transition: background 0.2s, transform 0.1s;
     flex-shrink: 0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 .scores-header-btn:hover {
     background: #f39c12;
@@ -55,18 +125,24 @@ h1 {
 .scores-header-btn:active {
     transform: scale(0.97);
 }
-.scores-header-btn i {
-    margin-right: 4px;
-}
 
 @media (max-width: 768px) {
-    h1 {
-        font-size: 1.1em;
-        flex: 1 1 100%;
-        text-align: center;
-    }
     .header-inner {
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: space-between;
+    }
+    .brand-tag { display: none; }
+    .brand-name { font-size: 0.95em; }
+    .scores-header-btn .btn-label { display: none; }
+    .scores-header-btn { padding: 6px 10px; }
+
+    /* Meter drops to its own full-width line below the brand */
+    .header-meter {
+        order: 3;
+        flex: 1 1 100%;
         justify-content: center;
+        padding: 4px 10px;
     }
 }
 
@@ -217,12 +293,6 @@ h1 {
             color: white;
             text-shadow: 0px 0px 4px #000;
 }
-.game-info {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 20px;
-}
-
 .game-area {
     display: flex;
     flex-direction: column;
@@ -231,11 +301,19 @@ h1 {
 
 /* ── Step tabs (1 Images → 2 Map → 3 Guess) ─────────────────────────────── */
 
+.control-row {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
 .step-tabs {
     display: flex;
-    gap: 8px;
+    gap: 6px;
+    flex: 1 1 420px;
     background: #fff;
-    padding: 8px;
+    padding: 6px;
     border-radius: 12px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
@@ -245,8 +323,8 @@ h1 {
     min-width: 0;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
+    gap: 9px;
+    padding: 7px 11px;
     border: 2px solid transparent;
     border-radius: 9px;
     background: #f4f6f8;
@@ -281,8 +359,8 @@ h1 {
 
 .step-num {
     flex-shrink: 0;
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     background: #cfd8dc;
     color: #fff;
@@ -422,23 +500,28 @@ h1 {
 
 .action-bar {
     display: flex;
-    gap: 10px;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    background: #fff;
+    padding: 6px;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .action-btn {
-    flex: 1 1 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 14px 18px;
+    gap: 7px;
+    padding: 9px 16px;
     border: none;
-    border-radius: 10px;
-    font-size: 1.05em;
+    border-radius: 999px;
+    font-size: 0.88em;
     font-weight: bold;
+    white-space: nowrap;
     cursor: pointer;
     transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 .action-btn:active:not(:disabled) { transform: scale(0.985); }
@@ -456,10 +539,9 @@ h1 {
 .action-btn-primary:hover:not(:disabled) { background-color: #c00720; }
 
 .action-btn:disabled {
-    background-color: #bdc3c7;
-    color: #eef1f2;
+    background-color: #dfe4e7;
+    color: #aab4ba;
     cursor: not-allowed;
-    box-shadow: none;
 }
 
 /* Nudge attention to the guess button once a pin is down. */
@@ -468,8 +550,8 @@ h1 {
 }
 
 @keyframes guess-ready-pulse {
-    0%, 100% { box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12); }
-    50%      { box-shadow: 0 2px 16px rgba(250, 9, 43, 0.55); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(250, 9, 43, 0); }
+    50%      { box-shadow: 0 0 0 4px rgba(250, 9, 43, 0.28); }
 }
 
 @media (max-width: 768px) {
@@ -488,24 +570,14 @@ h1 {
     }
 
     .container { padding: 12px; }
-    .game-info { margin-bottom: 12px; }
     .map-hint { padding: 8px; font-size: 0.85em; }
 
-    .action-btn {
-        padding: 13px 10px;
-        font-size: 0.98em;
-    }
+    .control-row { gap: 8px; }
+    .step-tabs { flex: 1 1 100%; }
+    .action-bar { flex: 1 1 100%; }
+    .action-btn { flex: 1 1 0; padding: 10px 8px; font-size: 0.85em; }
 
     .nav-btn .btn-label { display: none; }
-}
-
-.score-display,
-.round-display {
-    font-size: 1.2em;
-    font-weight: bold;
-    padding: 8px 15px;
-    background-color: #ecf0f1;
-    border-radius: 4px;
 }
 
 .game-over-screen {
@@ -820,32 +892,6 @@ a.footer-link {
     100% {
         transform: translateX(200%);
     }
-}
-
-/* Game progress bar */
-.progress-container {
-    width: 100%;
-    height: 20px;
-    background-color: #e0e0e0;
-    border-radius: 10px;
-    overflow: hidden;
-    margin: 10px 0;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.progress-bar {
-    height: 100%;
-    width: 0%;
-    border-radius: 10px;
-    transition: width 0.3s ease, background-color 0.3s ease;
-    background: linear-gradient(to right, #4caf50, #8bc34a);
-}
-
-.progress-text {
-    text-align: center;
-    margin-top: 5px;
-    font-size: 0.9em;
-    color: #555;
 }
 
 /* Slideshow styles */

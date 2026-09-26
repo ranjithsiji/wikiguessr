@@ -19,10 +19,26 @@
   <body>
     <header>
       <div class="container header-inner">
-        <h1>🌍 Wiki Guessr - Guess the geolocation based on images</h1>
-        <button id="scoresBtn" class="scores-header-btn" aria-label="View high scores">
-          <i class="fas fa-trophy"></i> Scores
-        </button>
+        <div class="brand">
+          <span class="brand-mark">🌍</span>
+          <span class="brand-text">
+            <span class="brand-name">Wiki Guessr</span>
+            <span class="brand-tag">Guess the geolocation from images</span>
+          </span>
+        </div>
+
+        <div class="header-meter">
+          <span class="meter-label">Round</span>
+          <div class="round-dots" id="roundDots" aria-hidden="true"></div>
+          <span class="meter-count" id="roundDisplay">1/5</span>
+        </div>
+
+        <div class="header-right">
+          <span class="score-chip" id="scoreDisplay">0 pts</span>
+          <button id="scoresBtn" class="scores-header-btn" aria-label="View high scores">
+            <i class="fas fa-trophy"></i><span class="btn-label"> Scores</span>
+          </button>
+        </div>
       </div>
     </header>
 
@@ -40,19 +56,9 @@
     <div id="scoresOverlay" class="scores-overlay"></div>
 
     <div class="container">
-      <div class="game-info">
-        <div class="round-display" id="roundDisplay">Round: 1</div>
-        <div class="score-display" id="scoreDisplay">Score: 0</div>
-      </div>
-
-      <div id="progressContainer">
-        <div class="progress-container">
-          <div id="progressBar" class="progress-bar"></div>
-        </div>
-      </div>
-
       <div class="game-area">
-        <!-- Step tabs: 1 Images -> 2 Map -> 3 Guess -->
+        <!-- Control row: step tabs on the left, actions on the right -->
+        <div class="control-row">
         <div class="step-tabs" role="tablist" aria-label="Game steps">
           <button
             class="step-tab active"
@@ -86,6 +92,18 @@
               <span class="step-title">Guess</span>
               <span class="step-hint" id="stepGuessHint">Pin required</span>
             </span>
+          </div>
+        </div>
+
+          <div class="action-bar">
+            <button class="action-btn action-btn-secondary" id="switchBtn">
+              <i class="fas fa-map-location-dot"></i>
+              <span id="switchBtnLabel">Put the Pin</span>
+            </button>
+            <button class="action-btn action-btn-primary" id="guessBtn" disabled>
+              <i class="fas fa-crosshairs"></i>
+              <span>Make a Guess</span>
+            </button>
           </div>
         </div>
 
@@ -127,18 +145,6 @@
               <span>Click anywhere on the map to place your pin.</span>
             </div>
           </section>
-        </div>
-
-        <!-- Action bar -->
-        <div class="action-bar">
-          <button class="action-btn action-btn-secondary" id="switchBtn">
-            <i class="fas fa-map-location-dot"></i>
-            <span id="switchBtnLabel">Put the Pin</span>
-          </button>
-          <button class="action-btn action-btn-primary" id="guessBtn" disabled>
-            <i class="fas fa-crosshairs"></i>
-            <span>Make the Guess</span>
-          </button>
         </div>
       </div>
     </div>

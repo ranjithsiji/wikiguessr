@@ -156,10 +156,8 @@ $(document).ready(function() {
         stopSlideshow();
         $("#resultModal").removeClass('active');
 
-        updateProgressBar(0);
-        $("#progressContainer").show();
-        $("#scoreDisplay").text(`Score: ${gameState.score}`);
-        $("#roundDisplay").text(`Round: ${gameState.round}/${gameState.maxRounds}`);
+        renderRoundDots();
+        updateScoreDisplay();
 
         // Bind delegated event listeners ONCE before kicking off the first round.
         setupEventListeners();
@@ -241,17 +239,26 @@ $(document).ready(function() {
         $('#mapHint i').attr('class', placed ? 'fas fa-map-pin' : 'fas fa-hand-pointer');
     }
 
-    function updateProgressBar(percentage) {
-        const $progressBar = $('#progressBar');
-        percentage = Math.max(0, Math.min(100, percentage));
-        $progressBar.css('width', `${percentage}%`);
-        if (percentage < 30) {
-            $progressBar.css('background', 'linear-gradient(to right, #ed2213ff, #ff9800)');
-        } else if (percentage < 70) {
-            $progressBar.css('background', 'linear-gradient(to right, #ffb300ff, #baff3bff)');
-        } else {
-            $progressBar.css('background', 'linear-gradient(to right, #97d04cff, #5ea310ff)');
+    // One dot per round in the header: green = played, blue = current,
+    // grey = not reached yet. Pass 'complete' to mark every round done.
+    function renderRoundDots(complete) {
+        const $dots = $('#roundDots').empty();
+        for (let i = 1; i <= gameState.maxRounds; i++) {
+            const $dot = $('<span class="round-dot"></span>');
+            if (complete || i < gameState.round) {
+                $dot.addClass('done');
+            } else if (i === gameState.round) {
+                $dot.addClass('active');
+            }
+            $dots.append($dot);
         }
+        $('#roundDisplay').text(complete
+            ? `${gameState.maxRounds}/${gameState.maxRounds}`
+            : `${gameState.round}/${gameState.maxRounds}`);
+    }
+
+    function updateScoreDisplay() {
+        $('#scoreDisplay').text(`${gameState.score.toLocaleString()} pts`);
     }
 
     function stopSlideshow() {
@@ -417,9 +424,7 @@ $(document).ready(function() {
             switchTab('images');
         }
 
-        const progress = (gameState.round / gameState.maxRounds) * 100;
-        updateProgressBar(progress);
-        $("#roundDisplay").text(`Round: ${gameState.round}/${gameState.maxRounds}`);
+        renderRoundDots();
         $("#imageCounter").text("Loading...");
 
         if (locationPool.items.length > 0) {
@@ -939,7 +944,7 @@ $(document).ready(function() {
 
         $("#resultMessage").text(message);
         $("#resultModal").addClass('active');
-        $("#scoreDisplay").text(`Score: ${gameState.score.toLocaleString()}`);
+        updateScoreDisplay();
     }
 
     function showError(message) {
@@ -1011,8 +1016,7 @@ $(document).ready(function() {
     // registered in setupEventListeners().
     function endGame() {
         saveScore(gameState.score);
-        updateProgressBar(100);
-        $("#progressContainer").hide();
+        renderRoundDots(true);
         $(".game-area").html(`
             <div class="game-over-screen">
                 <h2>🎉 Game Complete! 🎊</h2>
