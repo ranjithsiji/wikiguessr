@@ -46,6 +46,9 @@
 
         <div class="header-right">
           <span class="score-chip" id="scoreDisplay">0 pts</span>
+          <button id="helpBtn" class="theme-toggle" aria-label="How to play" title="How to play">
+            <i class="fas fa-question"></i>
+          </button>
           <button id="themeToggle" class="theme-toggle" aria-label="Switch theme">
             <i class="fas fa-moon"></i>
           </button>
@@ -159,6 +162,32 @@
               <span>Click anywhere on the map to place your pin.</span>
             </div>
           </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- Guided tour: spotlight cut-out + tooltip, shown on a player's first visit -->
+    <div class="tour" id="tour" aria-hidden="true">
+      <div class="tour-backdrop" id="tourBackdrop"></div>
+      <div class="tour-spotlight" id="tourSpotlight"></div>
+      <div
+        class="tour-popover"
+        id="tourPopover"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tourTitle"
+        aria-describedby="tourBody"
+      >
+        <div class="tour-arrow" id="tourArrow"></div>
+        <div class="tour-progress" id="tourProgress"></div>
+        <h3 class="tour-title" id="tourTitle"></h3>
+        <p class="tour-body" id="tourBody"></p>
+        <div class="tour-actions">
+          <button class="tour-skip" id="tourSkip">Skip</button>
+          <div class="tour-nav">
+            <button class="tour-btn tour-btn-ghost" id="tourPrev">Back</button>
+            <button class="tour-btn tour-btn-primary" id="tourNext">Next</button>
+          </div>
         </div>
       </div>
     </div>

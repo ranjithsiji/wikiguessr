@@ -1279,3 +1279,162 @@ a.footer-link {
     color: var(--text-muted);
 }
 :root[data-theme="dark"] .leaflet-control-attribution a { color: var(--accent); }
+
+/* ── Guided tour ─────────────────────────────────────────────────────────
+   A spotlight is cut out of the backdrop using a very large box-shadow on a
+   transparent box: the shadow paints everything *outside* the element, so the
+   target stays fully visible and un-dimmed without needing an SVG mask. */
+
+.tour { display: none; }
+.tour.active { display: block; }
+
+.tour-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    /* Catches clicks so the page can't be used mid-tour. Transparent because
+       the spotlight's box-shadow provides the actual dimming. */
+    background: transparent;
+}
+
+.tour-spotlight {
+    position: absolute;
+    z-index: 1201;
+    border-radius: 10px;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.62);
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    pointer-events: none;
+    transition: top 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+                left 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+                width 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+                height 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Centred state for steps that describe the game as a whole. */
+.tour-spotlight.tour-centred {
+    outline: none;
+    border-radius: 0;
+    width: 0;
+    height: 0;
+}
+
+.tour-popover {
+    position: absolute;
+    z-index: 1202;
+    width: 310px;
+    max-width: calc(100vw - 32px);
+    background: var(--surface);
+    color: var(--text);
+    border-radius: 12px;
+    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.42);
+    padding: 16px 18px 14px;
+    transition: top 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+                left 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: tour-pop 0.22s ease-out;
+}
+
+@keyframes tour-pop {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Little triangle pointing at the highlighted element. */
+.tour-arrow {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: var(--surface);
+    transform: rotate(45deg);
+}
+.tour-arrow.top    { top: -6px; }
+.tour-arrow.bottom { bottom: -6px; }
+.tour-arrow.hidden { display: none; }
+
+.tour-progress {
+    font-size: 0.7em;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.tour-title {
+    margin: 0 0 6px;
+    font-size: 1.05em;
+    color: var(--text-strong);
+}
+
+.tour-body {
+    margin: 0 0 14px;
+    font-size: 0.9em;
+    line-height: 1.5;
+    color: var(--text);
+}
+
+.tour-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.tour-nav { display: flex; gap: 8px; }
+
+.tour-btn {
+    border: none;
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 0.85em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+.tour-btn:active { transform: scale(0.97); }
+
+.tour-btn-primary {
+    background: var(--accent);
+    color: #fff;
+}
+.tour-btn-primary:hover { background: var(--accent-hover); }
+
+.tour-btn-ghost {
+    background: var(--surface-2);
+    color: var(--text-muted);
+}
+.tour-btn-ghost:hover { background: var(--surface-3); }
+.tour-btn-ghost:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.tour-skip {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.82em;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 4px;
+}
+.tour-skip:hover { color: var(--text); }
+
+@media (max-width: 768px) {
+    .tour-popover {
+        width: auto;
+        left: 12px !important;
+        right: 12px;
+        padding: 14px 15px 12px;
+    }
+    .tour-arrow { display: none; }
+    .tour-body { font-size: 0.86em; }
+}
+
+/* Players who prefer reduced motion get the tour without the sliding. */
+@media (prefers-reduced-motion: reduce) {
+    .tour-spotlight,
+    .tour-popover {
+        transition: none;
+        animation: none;
+    }
+}

@@ -61,6 +61,213 @@ $(document).ready(function() {
     initGame();
 
     // ---------------------------------------------------------------------------
+    // Guided tour (first-time players)
+    // ---------------------------------------------------------------------------
+
+    const TOUR_KEY = 'wikiguessr_tour_done';
+
+    // Each step highlights one element and explains it. `tab` forces the game
+    // onto that panel first, so a step never points at something hidden behind
+    // the other tab. A null element centres the popover (intro/outro steps).
+    const TOUR_STEPS = [
+        {
+            el: null,
+            title: 'Welcome to Wiki Guessr',
+            body: 'You get a set of photos of a real place somewhere on Earth. Work out where they were taken, drop a pin on the map, and score points for getting close. Five rounds per game.'
+        },
+        {
+            el: '#panelImages',
+            tab: 'images',
+            title: '1. Study the photos',
+            body: 'Look for clues: landscape, architecture, road signs, vegetation, the language on any text. Tap a photo to see it full size.'
+        },
+        {
+            el: '.image-nav',
+            tab: 'images',
+            title: 'Browse the photos',
+            body: 'Step through the images here, or switch between grid and slideshow. In slideshow view you can swipe left and right, or use the arrows on the picture.'
+        },
+        {
+            el: '#switchBtn',
+            title: '2. Put the pin',
+            body: 'When you have a guess, this opens the map. You can come back to the photos at any time — nothing is locked in yet.'
+        },
+        {
+            el: '#panelMap',
+            tab: 'map',
+            title: 'Drop your pin',
+            body: 'Click or tap anywhere on the map to place your pin. Click again somewhere else to move it.'
+        },
+        {
+            el: '#guessBtn',
+            title: '3. Make a guess',
+            body: 'This submits your pin and ends the round. It stays greyed out until a pin is placed. The closer you are, the more points you score.'
+        },
+        {
+            el: '.step-tabs',
+            tab: 'images',
+            title: 'Where you are',
+            body: 'These three steps track the round. Step 3 turns green once your pin is down and you are ready to submit.'
+        },
+        {
+            el: '.header-meter',
+            title: 'Rounds and score',
+            body: 'The dots show your progress: green for rounds played, blue for the current one. Your running score sits to the right.'
+        },
+        {
+            el: null,
+            title: 'That is everything',
+            body: 'Good luck! You can reopen this walkthrough any time with the ? button in the header.'
+        }
+    ];
+
+    const tour = { step: 0, active: false };
+
+    function tourSeen() {
+        try { return localStorage.getItem(TOUR_KEY) === '1'; } catch (e) { return true; }
+    }
+
+    function markTourSeen() {
+        try { localStorage.setItem(TOUR_KEY, '1'); } catch (e) {}
+    }
+
+    function startTour() {
+        tour.step = 0;
+        tour.active = true;
+        $('#tour').addClass('active').attr('aria-hidden', 'false');
+        showTourStep(0);
+    }
+
+    function endTour() {
+        tour.active = false;
+        markTourSeen();
+        $('#tour').removeClass('active').attr('aria-hidden', 'true');
+    }
+
+    function showTourStep(i) {
+        if (i < 0 || i >= TOUR_STEPS.length) return endTour();
+        tour.step = i;
+        const step = TOUR_STEPS[i];
+
+        // Bring the right panel forward before measuring, or the target may be
+        // the off-stage copy with a meaningless position.
+        if (step.tab && gameState.activeTab !== step.tab) switchTab(step.tab);
+
+        $('#tourProgress').text(`Step ${i + 1} of ${TOUR_STEPS.length}`);
+        $('#tourTitle').text(step.title);
+        $('#tourBody').text(step.body);
+        $('#tourPrev').prop('disabled', i === 0);
+        $('#tourNext').text(i === TOUR_STEPS.length - 1 ? 'Got it' : 'Next');
+        $('#tourSkip').toggle(i < TOUR_STEPS.length - 1);
+
+        // A tab switch changes layout, so measure only after the browser has
+        // laid the new panel out — one frame is not always enough, since the
+        // panel swap and the popover's own text change both reflow.
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => positionTour(step));
+        });
+    }
+
+    function positionTour(step) {
+        const $spot = $('#tourSpotlight');
+        const $pop = $('#tourPopover');
+        const $arrow = $('#tourArrow');
+        const $el = step.el ? $(step.el) : $();
+        const margin = 8;
+
+        if (!$el.length || !$el.is(':visible')) {
+            // Centre the popover and shrink the spotlight to nothing.
+            $spot.addClass('tour-centred').css({
+                top: window.scrollY + window.innerHeight / 2,
+                left: window.innerWidth / 2
+            });
+            $arrow.addClass('hidden');
+            // outerWidth() reads 0 until the element has been laid out, which
+            // would pin the popover to the left edge, so fall back to the
+            // stylesheet width when the measurement is not ready yet.
+            const w = $pop.outerWidth() || 310;
+            const h = $pop.outerHeight() || 180;
+            $pop.css({
+                top: window.scrollY + Math.max(20, (window.innerHeight - h) / 2),
+                left: Math.max(16, (window.innerWidth - w) / 2)
+            });
+            return;
+        }
+
+        const r = $el[0].getBoundingClientRect();
+        const top = r.top + window.scrollY;
+        const left = r.left + window.scrollX;
+
+        $spot.removeClass('tour-centred').css({
+            top: top - margin,
+            left: left - margin,
+            width: r.width + margin * 2,
+            height: r.height + margin * 2
+        });
+
+        // Prefer below the target; flip above when there isn't room.
+        const popH = $pop.outerHeight() || 180;
+        const popW = $pop.outerWidth() || 310;
+        const below = r.bottom + 14;
+        const fitsBelow = below + popH < window.innerHeight;
+
+        let popTop = fitsBelow ? below : r.top - popH - 14;
+        popTop = Math.max(10, popTop) + window.scrollY;
+
+        let popLeft = r.left + r.width / 2 - popW / 2;
+        popLeft = Math.min(Math.max(12, popLeft), window.innerWidth - popW - 12) + window.scrollX;
+
+        $pop.css({ top: popTop, left: popLeft });
+
+        $arrow.removeClass('hidden top bottom').addClass(fitsBelow ? 'top' : 'bottom');
+        const arrowLeft = Math.min(
+            Math.max(14, r.left + r.width / 2 - popLeft + window.scrollX - 6),
+            popW - 26
+        );
+        $arrow.css('left', arrowLeft);
+
+        // Scroll the target into view if it sits outside the viewport.
+        if (r.top < 0 || r.bottom > window.innerHeight) {
+            window.scrollTo({
+                top: top - window.innerHeight / 3,
+                behavior: 'smooth'
+            });
+        }
+    }
+
+    function setupTourListeners() {
+        $('#tourNext').on('click', () => showTourStep(tour.step + 1));
+        $('#tourPrev').on('click', () => showTourStep(tour.step - 1));
+        $('#tourSkip').on('click', endTour);
+        $('#helpBtn').on('click', startTour);
+
+        $(document).on('keydown.tour', function(e) {
+            if (!tour.active) return;
+            if (e.key === 'Escape')      endTour();
+            else if (e.key === 'ArrowRight') showTourStep(tour.step + 1);
+            else if (e.key === 'ArrowLeft')  showTourStep(tour.step - 1);
+        });
+
+        // Keep the highlight on target when the layout moves.
+        let resizeTimer = null;
+        $(window).on('resize.tour scroll.tour', function() {
+            if (!tour.active) return;
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => positionTour(TOUR_STEPS[tour.step]), 80);
+        });
+    }
+
+    setupTourListeners();
+
+    // First-time players get the walkthrough automatically. Deferred so it
+    // measures the finished layout rather than the loading state.
+    if (!tourSeen()) {
+        setTimeout(function() {
+            if (!tour.active) startTour();
+        }, 600);
+    }
+
+    // ---------------------------------------------------------------------------
     // Theme (light / dark)
     // ---------------------------------------------------------------------------
 
