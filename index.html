@@ -13,6 +13,17 @@
       rel="stylesheet"
       href="style.css"
     />
+    <script>
+      // Applied before first paint so a dark-mode player never sees a light flash.
+      (function () {
+        try {
+          var t = localStorage.getItem('wikiguessr_theme');
+          if (t === 'dark' || t === 'light') {
+            document.documentElement.setAttribute('data-theme', t);
+          }
+        } catch (e) {}
+      })();
+    </script>
     
   </head>
 
@@ -35,6 +46,9 @@
 
         <div class="header-right">
           <span class="score-chip" id="scoreDisplay">0 pts</span>
+          <button id="themeToggle" class="theme-toggle" aria-label="Switch theme">
+            <i class="fas fa-moon"></i>
+          </button>
           <button id="scoresBtn" class="scores-header-btn" aria-label="View high scores">
             <i class="fas fa-trophy"></i><span class="btn-label"> Scores</span>
           </button>

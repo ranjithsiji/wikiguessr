@@ -61,6 +61,64 @@ $(document).ready(function() {
     initGame();
 
     // ---------------------------------------------------------------------------
+    // Theme (light / dark)
+    // ---------------------------------------------------------------------------
+
+    // Three states: no stored value means "follow the OS", while an explicit
+    // 'light'/'dark' overrides it. The inline script in index.html applies the
+    // stored value before first paint; this only handles toggling afterwards.
+    const THEME_KEY = 'wikiguessr_theme';
+
+    function storedTheme() {
+        try { return localStorage.getItem(THEME_KEY); } catch (e) { return null; }
+    }
+
+    function systemPrefersDark() {
+        return window.matchMedia &&
+               window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function activeTheme() {
+        return storedTheme() || (systemPrefersDark() ? 'dark' : 'light');
+    }
+
+    function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
+        updateThemeToggle(theme);
+    }
+
+    // The icon shows what a click will switch *to*, which is the convention
+    // players expect from a single-button toggle.
+    function updateThemeToggle(theme) {
+        const dark = theme === 'dark';
+        $('#themeToggle')
+            .attr('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode')
+            .attr('title', dark ? 'Switch to light mode' : 'Switch to dark mode')
+            .html(dark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>');
+    }
+
+    function initTheme() {
+        updateThemeToggle(activeTheme());
+
+        $('#themeToggle').on('click', function() {
+            applyTheme(activeTheme() === 'dark' ? 'light' : 'dark');
+        });
+
+        // Follow the OS while the player has not made an explicit choice.
+        if (window.matchMedia) {
+            const mq = window.matchMedia('(prefers-color-scheme: dark)');
+            const onChange = () => {
+                if (!storedTheme()) updateThemeToggle(activeTheme());
+            };
+            if (mq.addEventListener) mq.addEventListener('change', onChange);
+            else if (mq.addListener) mq.addListener(onChange);
+        }
+    }
+
+    initTheme();
+
+    // ---------------------------------------------------------------------------
     // Score history (localStorage)
     // ---------------------------------------------------------------------------
 
