@@ -662,6 +662,11 @@ $(document).ready(function() {
         updateImageCounter();
     }
 
+    // Deliberately generic: Commons filenames usually contain the location name,
+    // so echoing the title into alt text would reveal the answer whenever an
+    // image fails to load. Only the license is surfaced to the player.
+    const IMAGE_ALT = 'Photo of the mystery location';
+
     const SLIDESHOW_INTERVAL_MS = 4000;
 
     function setupSlideshow($container) {
@@ -678,7 +683,7 @@ $(document).ready(function() {
         // detached Image() download. Handler bound before src so it always fires,
         // and persists for later src swaps by updateSlideshowImage().
         const $img = $('<img>')
-            .attr('alt', currentImage.title || 'Location image')
+            .attr('alt', IMAGE_ALT)
             .on('load', function() {
                 $(this).removeClass('landscape portrait')
                     .addClass(this.naturalWidth > this.naturalHeight ? 'landscape' : 'portrait');
@@ -767,7 +772,7 @@ $(document).ready(function() {
         // reapplies the landscape/portrait class.
         $("#imageContainer .slideshow-container img").attr({
             src: currentImage.thumbUrl || currentImage.url,
-            alt: currentImage.title || 'Location image'
+            alt: IMAGE_ALT
         });
 
         const $attribution = $("#imageContainer .slideshow-container .image-attribution");
@@ -793,7 +798,7 @@ $(document).ready(function() {
 
             const $img = $('<img>')
                 .attr('src', image.thumbUrl || image.url)
-                .attr('alt', image.title || 'Location image')
+                .attr('alt', IMAGE_ALT)
                 .on('error', function() {
                     $(this).attr('src', image.url);
                 });
